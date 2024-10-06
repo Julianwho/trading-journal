@@ -1,12 +1,16 @@
 import streamlit as st
 import pandas as pd
+import os
 from gestor_datos import GestorDatos
 from analisis import calcular_metricas_rendimiento, calcular_drawdown, analizar_estado_emocional
 from visualizaciones import crear_curva_capital, crear_distribucion_operaciones, crear_grafico_torta_ganadoras_perdedoras, crear_grafico_estado_emocional
 
 st.set_page_config(layout="wide", page_title="Diario de Trading")
 
-gestor_datos = GestorDatos('datos/diario_trading.xlsx')
+# Asegúrate de que esta ruta sea accesible y escribible
+ruta_archivo = 'datos/diario_trading.xlsx'
+
+gestor_datos = GestorDatos(ruta_archivo)
 
 st.title("Dashboard de Diario de Trading")
 
