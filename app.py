@@ -2,6 +2,44 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import datetime
+import sqlite3
+
+# Conectar a la base de datos (o crearla)
+conn = sqlite3.connect('trading_journal.db')
+c = conn.cursor()
+
+# Crear tablas si no existen
+c.execute('''CREATE TABLE IF NOT EXISTS trades (
+    id INTEGER PRIMARY KEY,
+    currency_pair TEXT,
+    open_time TEXT,
+    close_time TEXT,
+    order_type TEXT,
+    entry_price REAL,
+    exit_price REAL,
+    stop_loss REAL,
+    take_profit REAL,
+    position_size REAL,
+    result_money REAL,
+    result_pips REAL,
+    spread REAL,
+    slippage REAL,
+    commission REAL,
+    trade_reason TEXT,
+    personal_notes TEXT
+)''')
+
+c.execute('''CREATE TABLE IF NOT EXISTS emotions (
+    id INTEGER PRIMARY KEY,
+    emotion_date TEXT,
+    emotion_before TEXT,
+    emotion_during TEXT,
+    emotion_after TEXT,
+    fomo INTEGER,
+    impatience INTEGER,
+    trading_revenge INTEGER,
+    emotional_notes TEXT
+)''')
 
 # Configurar el título de la aplicación
 st.title("Trading Journal")
@@ -9,9 +47,6 @@ st.title("Trading Journal")
 # Seleccionar la pestaña
 tabs = ["Registro de Operaciones", "Estadísticas y Rendimiento", "Análisis de Psicología y Emociones"]
 tab = st.sidebar.selectbox("Selecciona una pestaña", tabs)
-
-# Ruta del archivo CSV
-file_path = 'trade_journal.csv'
 
 # Pestaña de Registro de Operaciones
 if tab == "Registro de Operaciones":
@@ -43,51 +78,35 @@ if tab == "Registro de Operaciones":
         result_money = (exit_price - entry_price) * position_size - commission
         result_pips = (exit_price - entry_price) * 10000  # Asumiendo que es un par de divisas
 
-        # Crear un DataFrame para guardar la operación
-        trade_data = {
-            "Par de divisas": currency_pair,
-            "Fecha Apertura": open_time,
-            "Fecha Cierre": close_time,
-            "Tipo de Orden": order_type,
-            "Precio de Entrada": entry_price,
-            "Precio de Salida": exit_price,
-            "Stop-Loss": stop_loss,
-            "Take-Profit": take_profit,
-            "Tamaño de la Posición": position_size,
-            "Resultado en Dinero": result_money,
-            "Resultado en Pips": result_pips,
-            "Spread": spread,
-            "Slippage": slippage,
-            "Comisiones": commission,
-            "Motivo": trade_reason,
-            "Notas": personal_notes,
-        }
-
-        # Guardar en CSV
-        if not pd.DataFrame(trade_data).empty:
-            df = pd.DataFrame([trade_data])
-            df.to_csv(file_path, mode='a', header=not pd.io.common.file_exists(file_path), index=False)
-
+        # Insertar en la base de datos
+        c.execute('''INSERT INTO trades (currency_pair, open_time, close_time, order_type, entry_price, exit_price,
+            stop_loss, take_profit, position_size, result_money, result_pips, spread, slippage, commission, trade_reason,
+            personal_notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', 
+            (currency_pair, open_time, close_time, order_type, entry_price, exit_price, stop_loss,
+            take_profit, position_size, result_money, result_pips, spread, slippage, commission, trade_reason,
+            personal_notes))
+        
+        conn.commit()  # Guardar los cambios en la base de datos
         st.success("Operación registrada correctamente!")
 
 # Pestaña de Estadísticas y Rendimiento
 elif tab == "Estadísticas y Rendimiento":
     st.subheader("Estadísticas y Rendimiento")
 
-    # Leer el archivo CSV de operaciones
-    trade_df = pd.read_csv(file_path)
+    # Leer el archivo de la base de datos de operaciones
+    trade_df = pd.read_sql_query("SELECT * FROM trades", conn)
 
     if not trade_df.empty:
         # Asegurarse de que las columnas sean del tipo correcto
-        trade_df['Resultado en Dinero'] = trade_df['Resultado en Dinero'].astype(float)
+        trade_df['result_money'] = trade_df['result_money'].astype(float)
 
         # Calcular estadísticas
-        total_pnL = trade_df['Resultado en Dinero'].sum()
-        win_rate = len(trade_df[trade_df['Resultado en Dinero'] > 0]) / len(trade_df) * 100
-        average_profit = trade_df['Resultado en Dinero'].mean()
-        average_loss = trade_df[trade_df['Resultado en Dinero'] < 0]['Resultado en Dinero'].mean()
-        max_consecutive_wins = (trade_df['Resultado en Dinero'] > 0).astype(int).groupby(trade_df['Resultado en Dinero'].lt(0).cumsum()).sum().max()
-        max_consecutive_losses = (trade_df['Resultado en Dinero'] < 0).astype(int).groupby(trade_df['Resultado en Dinero'].gt(0).cumsum()).sum().max()
+        total_pnL = trade_df['result_money'].sum()
+        win_rate = len(trade_df[trade_df['result_money'] > 0]) / len(trade_df) * 100
+        average_profit = trade_df['result_money'].mean()
+        average_loss = trade_df[trade_df['result_money'] < 0]['result_money'].mean()
+        max_consecutive_wins = (trade_df['result_money'] > 0).astype(int).groupby(trade_df['result_money'].lt(0).cumsum()).sum().max()
+        max_consecutive_losses = (trade_df['result_money'] < 0).astype(int).groupby(trade_df['result_money'].gt(0).cumsum()).sum().max()
 
         st.write(f"**Ganancias y Pérdidas Totales:** {total_pnL:.2f} €")
         st.write(f"**Tasa de Aciertos:** {win_rate:.2f}%")
@@ -97,17 +116,17 @@ elif tab == "Estadísticas y Rendimiento":
         st.write(f"**Máxima Racha Perdedora:** {max_consecutive_losses}")
 
         # Gráfico de Ganancias y Pérdidas
-        fig_pnl = px.histogram(trade_df, x='Resultado en Dinero',
+        fig_pnl = px.histogram(trade_df, x='result_money',
                                 title='Distribución de Ganancias y Pérdidas',
-                                labels={'Resultado en Dinero': 'Resultado (en €)'},
+                                labels={'result_money': 'Resultado (en €)'},
                                 template='plotly_white')
         st.plotly_chart(fig_pnl)
 
         # Gráfico de Ratio de Aciertos
         st.subheader("Gráfico de Ratio de Aciertos")
         fig_win_rate = px.pie(names=['Ganadoras', 'Perdedoras'],
-                               values=[len(trade_df[trade_df['Resultado en Dinero'] > 0]),
-                                       len(trade_df[trade_df['Resultado en Dinero'] <= 0])],
+                               values=[len(trade_df[trade_df['result_money'] > 0]),
+                                       len(trade_df[trade_df['result_money'] <= 0])],
                                title='Ratio de Aciertos')
         st.plotly_chart(fig_win_rate)
 
@@ -134,39 +153,31 @@ elif tab == "Análisis de Psicología y Emociones":
 
     # Procesar el registro de emociones después del envío
     if submit_emotion:
-        # Guardar las emociones en un DataFrame
-        emotion_data = {
-            "Fecha": emotion_date,
-            "Emotion Before": emotion_before,
-            "Emotion During": emotion_during,
-            "Emotion After": emotion_after,
-            "FOMO": fomo,
-            "Impatience": impatience,
-            "Trading Revenge": trading_revenge,
-            "Emotional Notes": emotional_notes,
-        }
-
-        # Guardar en CSV
-        emotion_df = pd.DataFrame([emotion_data])
-        emotion_df.to_csv('emotional_journal.csv', mode='a', header=not pd.io.common.file_exists('emotional_journal.csv'), index=False)
-
+        # Insertar en la base de datos
+        c.execute('''INSERT INTO emotions (emotion_date, emotion_before, emotion_during, emotion_after,
+            fomo, impatience, trading_revenge, emotional_notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)''', 
+            (emotion_date, emotion_before, emotion_during, emotion_after, 
+            int(fomo), int(impatience), int(trading_revenge), emotional_notes))
+        
+        conn.commit()  # Guardar los cambios en la base de datos
         st.success("Emoción registrada correctamente!")
 
     # Gráfico de emociones
-    emotional_df = pd.read_csv('emotional_journal.csv') if pd.io.common.file_exists('emotional_journal.csv') else pd.DataFrame()
+    emotional_df = pd.read_sql_query("SELECT * FROM emotions", conn)
 
     if not emotional_df.empty:
-        emotional_df['FOMO'] = emotional_df['FOMO'].map({True: 'Sí', False: 'No'})
-        emotional_df['Impatience'] = emotional_df['Impatience'].map({True: 'Sí', False: 'No'})
-        emotional_df['Trading Revenge'] = emotional_df['Trading Revenge'].map({True: 'Sí', False: 'No'})
-
-        # Gráfico de emociones
-        fig_emotions = px.histogram(emotional_df, x='Emotion After', color='FOMO',
+        emotional_df['fomo'] = emotional_df['fomo'].map({1: 'Sí', 0: 'No'})
+        emotional_df['impatience'] = emotional_df['impatience'].map({1: 'Sí', 0: 'No'})
+        emotional_df['trading_revenge'] = emotional_df['trading_revenge'].map({1: 'Sí', 0: 'No'})
+        
+        fig_emotions = px.histogram(emotional_df, x='emotion_after', color='fomo',
                                      title='Impacto de las Emociones en el Rendimiento',
-                                     labels={'Emotion After': 'Emoción Después', 'FOMO': 'FOMO'},
+                                     labels={'emotion_after': 'Emoción Después', 'fomo': 'FOMO'},
                                      template='plotly_white')
         st.plotly_chart(fig_emotions)
 
     else:
         st.warning("No hay registros emocionales. Registra al menos una emoción para ver gráficos.")
 
+# Cerrar la conexión a la base de datos
+conn.close()
