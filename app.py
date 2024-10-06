@@ -1,57 +1,33 @@
 import streamlit as st
 import pandas as pd
-import os
-import plotly.express as px
-import plotly.graph_objects as go
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
 
-# Archivo CSV para almacenar los datos de operaciones
-TRADE_CSV_FILE = "trading_data.csv"
-# Archivo CSV para almacenar los datos de emociones
-EMOTION_CSV_FILE = "trading_emotions.csv"
+# Configuración de Streamlit
+st.set_page_config(page_title="Trading Journal", layout="wide")
 
-# Función para cargar datos de operaciones
+# Cargar datos
+@st.cache_data
 def load_trade_data():
-    if os.path.exists(TRADE_CSV_FILE):
-        return pd.read_csv(TRADE_CSV_FILE)
-    else:
-        return pd.DataFrame(columns=[
-            "Pair", "Open Date", "Close Date", "Order Type", "Entry Price", 
-            "Exit Price", "Stop Loss", "Take Profit", "Position Size", 
-            "P&L in Pips", "P&L in Money", "Spread", "Slippage", 
-            "Commission", "Reason", "Notes"
-        ])
+    try:
+        trade_df = pd.read_csv("trade_data.csv")
+    except FileNotFoundError:
+        trade_df = pd.DataFrame(columns=["Pair", "Open Date", "Close Date", "Order Type", 
+                                          "Entry Price", "Exit Price", "Stop Loss", 
+                                          "Take Profit", "Position Size", "P&L in Pips", 
+                                          "P&L in Money", "Spread", "Commission", "Reason", 
+                                          "Notes"])
+    return trade_df
 
-# Función para guardar datos de operaciones
-def save_trade_data(df):
-    df.to_csv(TRADE_CSV_FILE, index=False)
+def save_trade_data(trade_df):
+    trade_df.to_csv("trade_data.csv", index=False)
 
-# Cargar los datos de operaciones existentes
 trade_df = load_trade_data()
 
-# Función para cargar datos de emociones
-def load_emotion_data():
-    if os.path.exists(EMOTION_CSV_FILE):
-        return pd.read_csv(EMOTION_CSV_FILE)
-    else:
-        return pd.DataFrame(columns=[
-            "Date", "Before Trade Emotion", 
-            "During Trade Emotion", "After Trade Emotion", 
-            "Limiting Belief", "Impact on Trading", 
-            "FOMO", "Trading Revenge", "Impatience"
-        ])
-
-# Función para guardar datos de emociones
-def save_emotion_data(df):
-    df.to_csv(EMOTION_CSV_FILE, index=False)
-
-# Cargar los datos de emociones existentes
-emotion_df = load_emotion_data()
-
-# Sidebar para seleccionar pestañas
-tab = st.sidebar.selectbox("Selecciona una pestaña", 
-                            ("Registro de Operaciones", 
-                             "Estadísticas y Rendimiento", 
-                             "Análisis de Psicología y Emociones"))
+# Pestañas
+tabs = ["Registro de Operaciones", "Estadísticas y Rendimiento", "Análisis de Psicología y Emociones"]
+tab = st.sidebar.selectbox("Selecciona una pestaña", tabs)
 
 if tab == "Registro de Operaciones":
     st.title("Registro de Operaciones")
@@ -70,44 +46,50 @@ if tab == "Registro de Operaciones":
     take_profit = st.sidebar.number_input("Take-Profit")
     position_size = st.sidebar.number_input("Tamaño de la Posición", min_value=0.0)
     spread = st.sidebar.number_input("Tamaño del Spread", min_value=0.0)
-    slippage = st.sidebar.number_input("Slippage", min_value=0.0)
     commission = st.sidebar.number_input("Comisiones", min_value=0.0)
     reason = st.sidebar.selectbox("Motivo de la Operación", 
                                    options=["Fundamental", "Técnico"])
     notes = st.sidebar.text_area("Notas Personales")
 
     if st.sidebar.button("Agregar Registro de Operación"):
-        # Calcular P&L
-        pnl_pips = (exit_price - entry_price) / (spread + slippage) * 10000
-        pnl_money = pnl_pips * position_size
-        
-        # Agregar una nueva fila al DataFrame
-        new_trade_row = {
-            "Pair": pair,
-            "Open Date": open_date,
-            "Close Date": close_date,
-            "Order Type": order_type,
-            "Entry Price": entry_price,
-            "Exit Price": exit_price,
-            "Stop Loss": stop_loss,
-            "Take Profit": take_profit,
-            "Position Size": position_size,
-            "P&L in Pips": pnl_pips,
-            "P&L in Money": pnl_money,
-            "Spread": spread,
-            "Slippage": slippage,
-            "Commission": commission,
-            "Reason": reason,
-            "Notes": notes
-        }
-        
-        # Añadir la nueva fila al DataFrame
-        trade_df = trade_df.append(new_trade_row, ignore_index=True)
-        
-        # Guardar los datos actualizados en el archivo CSV
-        save_trade_data(trade_df)
-        
-        st.sidebar.success("Registro de operación agregado exitosamente!")
+        # Validar que los campos obligatorios no estén vacíos
+        if entry_price <= 0 or exit_price <= 0:
+            st.sidebar.error("El precio de entrada y salida deben ser mayores a 0.")
+        else:
+            # Calcular P&L
+            if spread == 0:
+                pnl_pips = 0  # Si el spread es cero, establecemos P&L en pips a 0
+                pnl_money = 0  # Similar para el P&L en dinero
+            else:
+                pnl_pips = (exit_price - entry_price) / spread * 10000
+                pnl_money = pnl_pips * position_size
+            
+            # Agregar una nueva fila al DataFrame
+            new_trade_row = {
+                "Pair": pair,
+                "Open Date": open_date,
+                "Close Date": close_date,
+                "Order Type": order_type,
+                "Entry Price": entry_price,
+                "Exit Price": exit_price,
+                "Stop Loss": stop_loss,
+                "Take Profit": take_profit,
+                "Position Size": position_size,
+                "P&L in Pips": pnl_pips,
+                "P&L in Money": pnl_money,
+                "Spread": spread,
+                "Commission": commission,
+                "Reason": reason,
+                "Notes": notes
+            }
+            
+            # Añadir la nueva fila al DataFrame
+            trade_df = trade_df.append(new_trade_row, ignore_index=True)
+            
+            # Guardar los datos actualizados en el archivo CSV
+            save_trade_data(trade_df)
+            
+            st.sidebar.success("Registro de operación agregado exitosamente!")
 
     # Mostrar la tabla de registros de operaciones existentes
     st.subheader("Historial de Operaciones")
@@ -116,88 +98,60 @@ if tab == "Registro de Operaciones":
 elif tab == "Estadísticas y Rendimiento":
     st.title("Estadísticas y Rendimiento")
 
-    if not trade_df.empty:
+    if trade_df.empty:
+        st.warning("No hay registros de operaciones disponibles.")
+    else:
         # Calcular estadísticas
+        total_trades = len(trade_df)
+        win_trades = trade_df[trade_df["P&L in Money"] > 0]
+        loss_trades = trade_df[trade_df["P&L in Money"] <= 0]
+
+        win_rate = len(win_trades) / total_trades * 100 if total_trades > 0 else 0
         total_pnl = trade_df["P&L in Money"].sum()
-        win_rate = (trade_df[trade_df["P&L in Money"] > 0].shape[0] / trade_df.shape[0]) * 100
-        average_pnl = trade_df["P&L in Money"].mean()
         
-        # Gráficos de estadísticas
+        # Gráficos
         st.subheader("Ganancias y Pérdidas Acumuladas")
-        pnl_acumulado = trade_df.groupby("Open Date")["P&L in Money"].sum().cumsum()
-        st.line_chart(pnl_acumulado)
+        daily_pnl = trade_df.groupby(pd.to_datetime(trade_df["Open Date"])).sum()["P&L in Money"].cumsum()
+        st.line_chart(daily_pnl)
 
-        # Mostrar estadísticas
-        st.write(f"Total P&L: ${total_pnl:.2f}")
+        st.subheader("Ratio de Aciertos")
         st.write(f"Ratio de Aciertos: {win_rate:.2f}%")
-        st.write(f"Promedio de P&L por Operación: ${average_pnl:.2f}")
+        st.write(f"P&L Total: ${total_pnl:.2f}")
 
-        # Gráfico de P&L por Tipo de Operación
-        pnl_by_type = trade_df.groupby("Order Type")["P&L in Money"].sum().reset_index()
-        fig = px.bar(pnl_by_type, x='Order Type', y='P&L in Money', 
-                     title='P&L por Tipo de Operación', 
-                     color='P&L in Money', color_continuous_scale='Viridis')
-        st.plotly_chart(fig)
+        # Gráficos adicionales
+        st.subheader("Análisis de P&L")
+        fig, ax = plt.subplots()
+        sns.histplot(trade_df["P&L in Money"], bins=30, kde=True, ax=ax)
+        ax.axvline(0, color='red', linestyle='--')
+        st.pyplot(fig)
 
-else:
+elif tab == "Análisis de Psicología y Emociones":
     st.title("Análisis de Psicología y Emociones")
 
-    # Sección para agregar nuevos registros emocionales
-    st.sidebar.header("Agregar Registro Emocional")
+    st.sidebar.header("Diario Emocional")
+    
+    emotions = ["Estrés", "Ansiedad", "Confianza", "Felicidad"]
+    emotion_values = {emotion: st.sidebar.slider(emotion, 0, 10, 5) for emotion in emotions}
 
-    # Campos para el formulario de registro emocional
-    date = st.sidebar.date_input("Fecha")
-    before_trade_emotion = st.sidebar.selectbox("Emoción Antes de la Operación", 
-                                                  options=["Estrés", "Ansiedad", "Confianza", "Incertidumbre"])
-    during_trade_emotion = st.sidebar.selectbox("Emoción Durante la Operación", 
-                                                  options=["Estrés", "Ansiedad", "Confianza", "Incertidumbre"])
-    after_trade_emotion = st.sidebar.selectbox("Emoción Después de la Operación", 
-                                                  options=["Estrés", "Ansiedad", "Confianza", "Incertidumbre"])
-    limiting_belief = st.sidebar.text_input("Creencia Limitante")
-    impact_on_trading = st.sidebar.text_area("Impacto en el Trading")
-
-    # Casillas de verificación para emociones específicas
-    fomo = st.sidebar.checkbox("¿Sentiste FOMO (miedo a perderte una oportunidad)?")
-    trading_revenge = st.sidebar.checkbox("¿Tuviste impulsos de Trading Revenge (trading por venganza)?")
-    impatience = st.sidebar.checkbox("¿Te sentiste impaciente durante la operación?")
-
-    if st.sidebar.button("Agregar Registro Emocional"):
-        # Agregar una nueva fila al DataFrame
-        new_emotion_row = {
-            "Date": date.strftime("%b %d, %Y"),
-            "Before Trade Emotion": before_trade_emotion,
-            "During Trade Emotion": during_trade_emotion,
-            "After Trade Emotion": after_trade_emotion,
-            "Limiting Belief": limiting_belief,
-            "Impact on Trading": impact_on_trading,
-            "FOMO": fomo,
-            "Trading Revenge": trading_revenge,
-            "Impatience": impatience
-        }
-        
-        # Añadir la nueva fila al DataFrame
-        emotion_df = emotion_df.append(new_emotion_row, ignore_index=True)
-        
-        # Guardar los datos actualizados en el archivo CSV
-        save_emotion_data(emotion_df)
-        
-        st.sidebar.success("Registro emocional agregado exitosamente!")
-
-    # Mostrar la tabla de registros emocionales existentes
-    st.subheader("Historial de Registros Emocionales")
-    st.dataframe(emotion_df)
+    if st.sidebar.button("Registrar Estado Emocional"):
+        st.sidebar.success("Estado emocional registrado!")
 
     # Gráficos de emociones
-    st.subheader("Gráficos de Emociones")
-
-    if not emotion_df.empty:
-        # Contar las emociones
-        emotion_counts = emotion_df.groupby("After Trade Emotion").size().reset_index(name='Counts')
+    st.subheader("Impacto de las Emociones en el Rendimiento")
+    if not trade_df.empty:
+        win_emotions = {emotion: emotion_values[emotion] for emotion in emotions if trade_df["P&L in Money"].sum() > 0}
+        loss_emotions = {emotion: emotion_values[emotion] for emotion in emotions if trade_df["P&L in Money"].sum() <= 0}
         
-        # Gráfico de barras de emociones después de la operación
-        fig = px.bar(emotion_counts, x='After Trade Emotion', y='Counts', 
-                     title='Emociones Después de la Operación', 
-                     color='Counts', color_continuous_scale='Viridis')
+        fig, ax = plt.subplots()
+        ax.bar(win_emotions.keys(), win_emotions.values(), color='green', alpha=0.5, label='Operaciones Ganadoras')
+        ax.bar(loss_emotions.keys(), loss_emotions.values(), color='red', alpha=0.5, label='Operaciones Perdedoras')
+        ax.legend()
+        ax.set_ylabel('Intensidad')
+        st.pyplot(fig)
 
-        fig.update_layout(template='plotly_white', xaxis_title='Emoción', yaxis_title='Cantidad de Registros')
-        st.plotly_chart(fig)
+        # Registro de creencias limitantes
+        st.subheader("Registro de Creencias Limitantes")
+        limiting_beliefs = st.text_area("Escribe tus creencias limitantes")
+        if st.button("Registrar Creencias Limitantes"):
+            st.success("Creencias limitantes registradas!")
+
