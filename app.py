@@ -1,163 +1,177 @@
 import dash
-from dash import dcc, html
-from dash.dependencies import Input, Output, State
-import dash_bootstrap_components as dbc
+from dash import dcc, html, dash_table
+import plotly.express as px
+import plotly.graph_objects as go
+from dash.dependencies import Input, Output
 import pandas as pd
-import plotly.graph_objs as go
-from datetime import datetime
+import numpy as np
+from datetime import datetime, timedelta
 
-# Inicializar la aplicación Dash
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+# Necesitarás instalar:
+# pip install dash pandas plotly numpy
 
-# Crear un DataFrame vacío para almacenar las operaciones
-df = pd.DataFrame(columns=['Par', 'Fecha_Apertura', 'Fecha_Cierre', 'Tipo_Orden', 'Precio_Entrada', 'Precio_Salida', 
-                           'Stop_Loss', 'Take_Profit', 'Tamaño_Posicion', 'Resultado_Pips', 'Resultado_Dinero', 
-                           'Spread', 'Slippage', 'Comisiones', 'Motivo', 'Notas'])
+# Generar datos de ejemplo
+def generate_sample_data():
+    dates = pd.date_range(start='2023-01-01', end='2024-01-01', freq='D')
+    balance = np.cumsum(np.random.normal(0.1, 1, len(dates))) + 10000
+    equity = balance + np.random.normal(0, 100, len(dates))
+    
+    trades = pd.DataFrame({
+        'date': dates,
+        'balance': balance,
+        'equity': equity,
+        'profit_loss': np.random.normal(0, 100, len(dates)),
+        'pair': np.random.choice(['EUR/USD', 'GBP/USD', 'USD/JPY'], len(dates)),
+        'direction': np.random.choice(['Long', 'Short'], len(dates)),
+    })
+    return trades
+
+app = dash.Dash(__name__)
+
+# Estilo
+colors = {
+    'background': '#1e222d',
+    'text': '#7fafdf',
+    'grid': '#2c3040'
+}
 
 # Diseño del dashboard
-app.layout = dbc.Container([
-    dbc.Row([
-        dbc.Col(html.H1("Dashboard de Trading"), className="mb-4")
-    ]),
-    
-    dbc.Row([
-        dbc.Col([
-            dbc.Card([
-                dbc.CardHeader("Registro de Operaciones"),
-                dbc.CardBody([
-                    dbc.Row([
-                        dbc.Col(dcc.Input(id='par', placeholder='Par de divisas', type='text')),
-                        dbc.Col(dcc.DatePickerSingle(id='fecha-apertura', placeholder='Fecha de apertura')),
-                        dbc.Col(dcc.DatePickerSingle(id='fecha-cierre', placeholder='Fecha de cierre')),
-                    ]),
-                    dbc.Row([
-                        dbc.Col(dcc.Dropdown(id='tipo-orden', options=[
-                            {'label': 'Market', 'value': 'Market'},
-                            {'label': 'Limit', 'value': 'Limit'},
-                            {'label': 'Stop', 'value': 'Stop'}
-                        ], placeholder='Tipo de orden')),
-                        dbc.Col(dcc.Input(id='precio-entrada', placeholder='Precio de entrada', type='number')),
-                        dbc.Col(dcc.Input(id='precio-salida', placeholder='Precio de salida', type='number')),
-                    ]),
-                    dbc.Row([
-                        dbc.Col(dcc.Input(id='stop-loss', placeholder='Stop Loss', type='number')),
-                        dbc.Col(dcc.Input(id='take-profit', placeholder='Take Profit', type='number')),
-                        dbc.Col(dcc.Input(id='tamaño-posicion', placeholder='Tamaño de posición', type='number')),
-                    ]),
-                    dbc.Row([
-                        dbc.Col(dcc.Input(id='resultado-pips', placeholder='Resultado en pips', type='number')),
-                        dbc.Col(dcc.Input(id='resultado-dinero', placeholder='Resultado en dinero', type='number')),
-                        dbc.Col(dcc.Input(id='spread', placeholder='Spread', type='number')),
-                    ]),
-                    dbc.Row([
-                        dbc.Col(dcc.Input(id='slippage', placeholder='Slippage', type='number')),
-                        dbc.Col(dcc.Input(id='comisiones', placeholder='Comisiones', type='number')),
-                        dbc.Col(dcc.Dropdown(id='motivo', options=[
-                            {'label': 'Fundamental', 'value': 'Fundamental'},
-                            {'label': 'Técnico', 'value': 'Técnico'}
-                        ], placeholder='Motivo')),
-                    ]),
-                    dbc.Row([
-                        dbc.Col(dcc.Textarea(id='notas', placeholder='Notas personales', style={'width': '100%', 'height': 100})),
-                    ]),
-                    dbc.Button("Registrar Operación", id='submit-button', color="primary", className="mt-3"),
-                ])
-            ], className="mb-4"),
-            
-            dbc.Card([
-                dbc.CardHeader("Resumen de Operaciones"),
-                dbc.CardBody([
-                    dcc.Graph(id='resumen-grafico')
-                ])
-            ])
-        ], width=8),
+app.layout = html.Div([
+    html.Div([
+        html.H1('Trading Dashboard', style={'color': colors['text']}),
         
-        dbc.Col([
-            dbc.Card([
-                dbc.CardHeader("Estadísticas"),
-                dbc.CardBody([
-                    html.Div(id='estadisticas')
-                ])
-            ], className="mb-4"),
+        # Sección 1: Resumen General
+        html.Div([
+            html.H2('Resumen General', style={'color': colors['text']}),
+            html.Div([
+                html.Div([
+                    html.H3('Balance Total', style={'color': colors['text']}),
+                    html.H4(id='balance-total', style={'color': '#4CAF50'})
+                ], className='metric-box'),
+                html.Div([
+                    html.H3('Equity', style={'color': colors['text']}),
+                    html.H4(id='equity-total', style={'color': '#2196F3'})
+                ], className='metric-box'),
+                html.Div([
+                    html.H3('P/L Acumulado', style={'color': colors['text']}),
+                    html.H4(id='pl-total', style={'color': '#FFC107'})
+                ], className='metric-box'),
+            ], style={'display': 'flex', 'justify-content': 'space-between'}),
             
-            dbc.Card([
-                dbc.CardHeader("Últimas Operaciones"),
-                dbc.CardBody([
-                    html.Div(id='ultimas-operaciones')
-                ])
-            ])
-        ], width=4)
-    ])
-], fluid=True)
+            dcc.Graph(id='balance-equity-chart')
+        ]),
+        
+        # Sección 2: Estadísticas de Trading
+        html.Div([
+            html.H2('Estadísticas de Trading', style={'color': colors['text']}),
+            html.Div([
+                html.Div([
+                    html.H3('Win Rate', style={'color': colors['text']}),
+                    html.H4(id='win-rate', style={'color': '#4CAF50'})
+                ], className='metric-box'),
+                html.Div([
+                    html.H3('Mejor Trade', style={'color': colors['text']}),
+                    html.H4(id='best-trade', style={'color': '#2196F3'})
+                ], className='metric-box'),
+                html.Div([
+                    html.H3('Peor Trade', style={'color': colors['text']}),
+                    html.H4(id='worst-trade', style={'color': '#F44336'})
+                ], className='metric-box'),
+            ], style={'display': 'flex', 'justify-content': 'space-between'}),
+            
+            dcc.Graph(id='win-loss-distribution')
+        ]),
+        
+        # Sección 3: Análisis por Par de Divisas
+        html.Div([
+            html.H2('Análisis por Par', style={'color': colors['text']}),
+            dcc.Graph(id='pair-performance')
+        ]),
+        
+        # Sección 4: Tabla de Trades
+        html.Div([
+            html.H2('Registro de Operaciones', style={'color': colors['text']}),
+            dash_table.DataTable(
+                id='trades-table',
+                style_header={
+                    'backgroundColor': colors['grid'],
+                    'color': colors['text']
+                },
+                style_cell={
+                    'backgroundColor': colors['background'],
+                    'color': colors['text']
+                }
+            )
+        ])
+    ], style={'backgroundColor': colors['background'], 'padding': '20px'})
+])
 
-# Callback para registrar una nueva operación
+# Callbacks
 @app.callback(
-    Output('estadisticas', 'children'),
-    Output('ultimas-operaciones', 'children'),
-    Output('resumen-grafico', 'figure'),
-    Input('submit-button', 'n_clicks'),
-    [State('par', 'value'),
-     State('fecha-apertura', 'date'),
-     State('fecha-cierre', 'date'),
-     State('tipo-orden', 'value'),
-     State('precio-entrada', 'value'),
-     State('precio-salida', 'value'),
-     State('stop-loss', 'value'),
-     State('take-profit', 'value'),
-     State('tamaño-posicion', 'value'),
-     State('resultado-pips', 'value'),
-     State('resultado-dinero', 'value'),
-     State('spread', 'value'),
-     State('slippage', 'value'),
-     State('comisiones', 'value'),
-     State('motivo', 'value'),
-     State('notas', 'value')]
+    [Output('balance-total', 'children'),
+     Output('equity-total', 'children'),
+     Output('pl-total', 'children'),
+     Output('win-rate', 'children'),
+     Output('best-trade', 'children'),
+     Output('worst-trade', 'children'),
+     Output('balance-equity-chart', 'figure'),
+     Output('win-loss-distribution', 'figure'),
+     Output('pair-performance', 'figure'),
+     Output('trades-table', 'data')],
+    [Input('dummy-input', 'children')]
 )
-def registrar_operacion(n_clicks, par, fecha_apertura, fecha_cierre, tipo_orden, precio_entrada, precio_salida,
-                        stop_loss, take_profit, tamaño_posicion, resultado_pips, resultado_dinero, spread,
-                        slippage, comisiones, motivo, notas):
-    global df
-    if n_clicks is None:
-        return dash.no_update, dash.no_update, dash.no_update
+def update_dashboard(_):
+    trades_df = generate_sample_data()
     
-    nueva_operacion = pd.DataFrame({
-        'Par': [par],
-        'Fecha_Apertura': [fecha_apertura],
-        'Fecha_Cierre': [fecha_cierre],
-        'Tipo_Orden': [tipo_orden],
-        'Precio_Entrada': [precio_entrada],
-        'Precio_Salida': [precio_salida],
-        'Stop_Loss': [stop_loss],
-        'Take_Profit': [take_profit],
-        'Tamaño_Posicion': [tamaño_posicion],
-        'Resultado_Pips': [resultado_pips],
-        'Resultado_Dinero': [resultado_dinero],
-        'Spread': [spread],
-        'Slippage': [slippage],
-        'Comisiones': [comisiones],
-        'Motivo': [motivo],
-        'Notas': [notas]
-    })
+    # Cálculos para métricas
+    balance_total = f"${trades_df['balance'].iloc[-1]:,.2f}"
+    equity_total = f"${trades_df['equity'].iloc[-1]:,.2f}"
+    pl_total = f"${trades_df['profit_loss'].sum():,.2f}"
+    win_rate = f"{(trades_df['profit_loss'] > 0).mean() * 100:.1f}%"
+    best_trade = f"${trades_df['profit_loss'].max():,.2f}"
+    worst_trade = f"${trades_df['profit_loss'].min():,.2f}"
     
-    df = pd.concat([df, nueva_operacion], ignore_index=True)
+    # Gráfico de Balance y Equity
+    balance_equity_fig = go.Figure()
+    balance_equity_fig.add_trace(go.Scatter(x=trades_df['date'], y=trades_df['balance'],
+                                           name='Balance', line=dict(color='#4CAF50')))
+    balance_equity_fig.add_trace(go.Scatter(x=trades_df['date'], y=trades_df['equity'],
+                                           name='Equity', line=dict(color='#2196F3')))
+    balance_equity_fig.update_layout(
+        plot_bgcolor=colors['background'],
+        paper_bgcolor=colors['background'],
+        font=dict(color=colors['text']),
+        xaxis=dict(gridcolor=colors['grid']),
+        yaxis=dict(gridcolor=colors['grid'])
+    )
     
-    # Actualizar estadísticas
-    estadisticas = html.Div([
-        html.P(f"Total de operaciones: {len(df)}"),
-        html.P(f"Ganancia total: {df['Resultado_Dinero'].sum():.2f}"),
-        html.P(f"Operaciones ganadoras: {len(df[df['Resultado_Dinero'] > 0])}")
-    ])
+    # Distribución de Ganancias/Pérdidas
+    win_loss_fig = px.histogram(trades_df, x='profit_loss', nbins=20,
+                               color_discrete_sequence=['#4CAF50'])
+    win_loss_fig.update_layout(
+        plot_bgcolor=colors['background'],
+        paper_bgcolor=colors['background'],
+        font=dict(color=colors['text']),
+        xaxis=dict(gridcolor=colors['grid']),
+        yaxis=dict(gridcolor=colors['grid'])
+    )
     
-    # Actualizar últimas operaciones
-    ultimas_operaciones = html.Div([
-        html.P(f"{row['Par']} - {row['Resultado_Dinero']:.2f}") for _, row in df.tail(5).iterrows()
-    ])
+    # Rendimiento por Par
+    pair_performance_fig = px.box(trades_df, x='pair', y='profit_loss',
+                                 color='pair', color_discrete_sequence=['#4CAF50', '#2196F3', '#FFC107'])
+    pair_performance_fig.update_layout(
+        plot_bgcolor=colors['background'],
+        paper_bgcolor=colors['background'],
+        font=dict(color=colors['text']),
+        xaxis=dict(gridcolor=colors['grid']),
+        yaxis=dict(gridcolor=colors['grid'])
+    )
     
-    # Actualizar gráfico de resumen
-    fig = go.Figure(data=[go.Bar(x=df['Par'], y=df['Resultado_Dinero'])])
-    fig.update_layout(title='Resultado por Par de Divisas')
+    # Tabla de trades
+    table_data = trades_df.tail(10).to_dict('records')
     
-    return estadisticas, ultimas_operaciones, fig
+    return (balance_total, equity_total, pl_total, win_rate, best_trade, worst_trade,
+            balance_equity_fig, win_loss_fig, pair_performance_fig, table_data)
 
 if __name__ == '__main__':
     app.run_server(debug=True)
