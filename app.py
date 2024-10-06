@@ -156,28 +156,28 @@ elif tab == "Análisis de Psicología y Emociones":
         # Insertar en la base de datos
         c.execute('''INSERT INTO emotions (emotion_date, emotion_before, emotion_during, emotion_after,
             fomo, impatience, trading_revenge, emotional_notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)''', 
-            (emotion_date, emotion_before, emotion_during, emotion_after, 
-            int(fomo), int(impatience), int(trading_revenge), emotional_notes))
+            (emotion_date, emotion_before, emotion_during, emotion_after, int(fomo), int(impatience), int(trading_revenge), emotional_notes))
         
         conn.commit()  # Guardar los cambios en la base de datos
         st.success("Emoción registrada correctamente!")
 
-    # Gráfico de emociones
-    emotional_df = pd.read_sql_query("SELECT * FROM emotions", conn)
+        # Leer el archivo de la base de datos de emociones
+        emotional_df = pd.read_sql_query("SELECT * FROM emotions", conn)
 
-    if not emotional_df.empty:
-        emotional_df['fomo'] = emotional_df['fomo'].map({1: 'Sí', 0: 'No'})
-        emotional_df['impatience'] = emotional_df['impatience'].map({1: 'Sí', 0: 'No'})
-        emotional_df['trading_revenge'] = emotional_df['trading_revenge'].map({1: 'Sí', 0: 'No'})
-        
-        fig_emotions = px.histogram(emotional_df, x='emotion_after', color='fomo',
-                                     title='Impacto de las Emociones en el Rendimiento',
-                                     labels={'emotion_after': 'Emoción Después', 'fomo': 'FOMO'},
-                                     template='plotly_white')
-        st.plotly_chart(fig_emotions)
+        # Gráfico de emociones
+        if not emotional_df.empty:
+            emotional_df['fomo'] = emotional_df['fomo'].map({1: 'Sí', 0: 'No'})
+            emotional_df['impatience'] = emotional_df['impatience'].map({1: 'Sí', 0: 'No'})
+            emotional_df['trading_revenge'] = emotional_df['trading_revenge'].map({1: 'Sí', 0: 'No'})
+            
+            fig_emotions = px.histogram(emotional_df, x='emotion_after', color='fomo',
+                                         title='Impacto de las Emociones en el Rendimiento',
+                                         labels={'emotion_after': 'Emoción Después', 'fomo': 'FOMO'},
+                                         template='plotly_white')
+            st.plotly_chart(fig_emotions)
 
-    else:
-        st.warning("No hay registros emocionales. Registra al menos una emoción para ver gráficos.")
+        else:
+            st.warning("No hay registros emocionales. Registra al menos una emoción para ver gráficos.")
 
 # Cerrar la conexión a la base de datos
 conn.close()
