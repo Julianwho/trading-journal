@@ -2,13 +2,10 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from datetime import datetime, timedelta
+from datetime import datetime
 from PIL import Image
-import io
 import requests
 from bs4 import BeautifulSoup
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
 
 # Función para obtener noticias de Forex Factory
 def get_forex_factory_news():
@@ -96,7 +93,7 @@ def add_news_impact(date, news, impact, description):
     st.session_state['news_impact'] = pd.concat([st.session_state['news_impact'], pd.DataFrame([new_row])], ignore_index=True)
 
 # Interfaz principal
-st.title("Trading Journal Dashboard")
+st.title("📈 Trading Journal Dashboard")
 
 # Pestañas
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["Registro de Operaciones", "Estadísticas y Rendimiento", "Gestión del Riesgo", "Análisis Psicológico", "Noticias y Sentimiento"])
@@ -158,7 +155,7 @@ with tab2:
         
         # Gráfico de resultados acumulados
         df['Resultado Acumulado'] = df['Resultado'].cumsum()
-        fig_results = px.line(df, x='Fecha', y='Resultado Acumulado', title='Resultados Acumulados')
+        fig_results = px.line(df, x='Fecha', y='Resultado Acumulado', title='Resultados Acumulados', markers=True)
         st.plotly_chart(fig_results)
         
         # Estadísticas generales
@@ -173,7 +170,7 @@ with tab2:
         col3.metric("Ratio de aciertos", f"{win_rate:.2f}%")
         
         # Distribución de resultados
-        fig_dist = px.histogram(df, x='Resultado', title='Distribución de Resultados')
+        fig_dist = px.histogram(df, x='Resultado', title='Distribución de Resultados', nbins=20)
         st.plotly_chart(fig_dist)
 
 with tab3:
@@ -184,137 +181,45 @@ with tab3:
         
         # Cálculo del VaR (simplificado)
         returns = df['Resultado'].pct_change()
-        var_95 = returns.quantile(0.05)
-        st.metric("Value at Risk (95%)", f"{var_95:.2%}")
+        var_95 = returns.quantile(0.05) if len(returns) > 0 else 0
         
-        # Cálculo del Drawdown
-        df['Cumulative'] = df['Resultado'].cumsum()
-        df['Drawdown'] = df['Cumulative'] - df['Cumulative'].cummax()
-        max_drawdown = df['Drawdown'].min()
-        st.metric("Máximo Drawdown", f"{max_drawdown:.2f}")
-        
-        # Gráfico de apalancamiento
-        fig_leverage = px.line(df, x='Fecha', y='Apalancamiento', title='Apalancamiento Utilizado')
-        st.plotly_chart(fig_leverage)
-        
-        # Gráfico de margen
-        fig_margin = px.line(df, x='Fecha', y='Margen', title='Margen Utilizado')
-        st.plotly_chart(fig_margin)
-        
-        # Calendario de rendimiento
-        fig, ax = plt.subplots(figsize=(12, 6))
-        df['Fecha'] = pd.to_datetime(df['Fecha'])
-        df.set_index('Fecha', inplace=True)
-        cmap = plt.cm.RdYlGn
-        df['Resultado'].plot(kind='bar', ax=ax, color=cmap(df['Resultado']/df['Resultado'].abs().max()))
-        ax.xaxis.set_major_locator(mdates.WeekdayLocator(byweekday=mdates.MONDAY))
-        ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
-        plt.title('Rendimiento Diario')
-        plt.xticks(rotation=45)
-        plt.tight_layout()
-        st.pyplot(fig)
+        st.write("### Valor en Riesgo (VaR) a 95% de confianza")
+        st.metric("VaR", f"{var_95:.2f}")
+    
+        # Análisis de apalancamiento
+        st.write("### Análisis de Apalancamiento")
+        leverage_average = df['Apalancamiento'].mean() if not df['Apalancamiento'].empty else 0
+        st.metric("Apalancamiento Promedio", f"{leverage_average:.2f}")
 
 with tab4:
     st.header("Análisis Psicológico")
     
-    # Formulario para añadir análisis psicológico
-    st.subheader("Registrar Análisis Psicológico")
-    date = st.date_input("Fecha del análisis", datetime.today(), key="psych_date")
-    operation_id = st.number_input("ID de la Operación", min_value=0, step=1)
-    fomo = st.checkbox("¿Tuviste FOMO?")
-    revenge = st.checkbox("¿Tuviste Trade Revenge?")
-    impatience = st.checkbox("¿Tuviste Impaciencia?")
-    emotion_before = st.select_slider("Emoción antes de la operación", options=["Muy Negativa", "Negativa", "Neutral", "Positiva", "Muy Positiva"])
-    emotion_during = st.select_slider("Emoción durante la operación", options=["Muy Negativa", "Negativa", "Neutral", "Positiva", "Muy Positiva"])
-    emotion_after = st.select_slider("Emoción después de la operación", options=["Muy Negativa", "Negativa", "Neutral", "Positiva", "Muy Positiva"])
-
-    if st.button("Registrar Análisis Psicológico"):
+    date = st.date_input("Fecha de Análisis")
+    operation_id = st.number_input("ID de Operación")
+    fomo = st.checkbox("FOMO")
+    revenge = st.checkbox("Trade Revenge")
+    impatience = st.checkbox("Impaciencia")
+    
+    emotion_before = st.text_input("Emoción Antes")
+    emotion_during = st.text_input("Emoción Durante")
+    emotion_after = st.text_input("Emoción Después")
+    
+    if st.button("Agregar Análisis Psicológico"):
         add_psychological_analysis(date, operation_id, fomo, revenge, impatience, emotion_before, emotion_during, emotion_after)
 
-    # Mostrar análisis psicológico
     if not st.session_state['psychological_analysis'].empty:
         st.write("### Registro de Análisis Psicológico")
         st.dataframe(st.session_state['psychological_analysis'])
 
-        # Gráfico de emociones a lo largo del tiempo
-        emotions_df = st.session_state['psychological_analysis'][['Fecha', 'Emoción Antes', 'Emoción Durante', 'Emoción Después']]
-        emotions_df = emotions_df.melt('Fecha', var_name='Etapa', value_name='Emoción')
-        fig_emotions = px.line(emotions_df, x='Fecha', y='Emoción', color='Etapa', title='Evolución de Emociones')
-        st.plotly_chart(fig_emotions)
-
-        # Gráfico de factores psicológicos
-        factors_df = st.session_state['psychological_analysis'][['Fecha', 'FOMO', 'Trade Revenge', 'Impaciencia']]
-        factors_df = factors_df.melt('Fecha', var_name='Factor', value_name='Presencia')
-        fig_factors = px.bar(factors_df, x='Fecha', y='Presencia', color='Factor', title='Factores Psicológicos por Operación')
-        st.plotly_chart(fig_factors)
-
 with tab5:
-    st.header("Noticias y Sentimiento del Mercado")
+    st.header("Noticias y Sentimiento")
     
-    # Obtener noticias de Forex Factory
-    forex_news = get_forex_factory_news()
-    st.subheader("Noticias de Forex Factory")
-    st.dataframe(forex_news)
-    
-    # Formulario para registrar impacto de noticias
-    st.subheader("Registrar Impacto de Noticias")
-    news_date = st.date_input("Fecha de la noticia", datetime.today(), key="news_date")
-    news_event = st.text_input("Evento o Noticia")
-    news_impact = st.selectbox("Impacto en tus operaciones", ["Positivo", "Negativo", "Neutral"])
-    news_description = st.text_area("Descripción del impacto")
+    if st.button("Obtener Noticias de Forex Factory"):
+        news_df = get_forex_factory_news()
+        if not news_df.empty:
+            st.dataframe(news_df)
 
-    if st.button("Registrar Impacto de Noticia"):
-        add_news_impact(news_date, news_event, news_impact, news_description)
-
-    # Mostrar registro de impacto de noticias
     if not st.session_state['news_impact'].empty:
         st.write("### Registro de Impacto de Noticias")
         st.dataframe(st.session_state['news_impact'])
 
-        # Gráfico de impacto de noticias
-        fig_news_impact = px.bar(st.session_state['news_impact'], x='Fecha', y='Impacto', color='Impacto',
-                                 title='Impacto de Noticias en las Operaciones')
-        st.plotly_chart(fig_news_impact)
-
-    # Indicador de sentimiento del mercado (simplificado)
-    st.subheader("Indicador de Sentimiento del Mercado")
-    sentiment = st.slider("Índice de Miedo/Codicia", 0, 100, 50)
-    st.progress(sentiment)
-    if sentiment < 20:
-        st.write("Miedo Extremo")
-    elif sentiment < 40:
-        st.write("Miedo")
-    elif sentiment < 60:
-        st.write("Neutral")
-    elif sentiment < 80:
-        st.write("Codicia")
-    else:
-        st.write("Codicia Extrema")
-
-# Botones para descargar los datos
-if not st.session_state['operations'].empty:
-    operations_csv = st.session_state['operations'].to_csv(index=False).encode('utf-8')
-    st.download_button(
-        label="Descargar Registro de Operaciones como CSV",
-        data=operations_csv,
-        file_name="trading_operations.csv",
-        mime="text/csv",
-    )
-
-if not st.session_state['psychological_analysis'].empty:
-    psych_csv = st.session_state['psychological_analysis'].to_csv(index=False).encode('utf-8')
-    st.download_button(
-        label="Descargar Análisis Psicológico como CSV",
-        data=psych_csv,
-        file_name="psychological_analysis.csv",
-        mime="text/csv",
-    )
-
-if not st.session_state['news_impact'].empty:
-    news_csv = st.session_state['news_impact'].to_csv(index=False).encode('utf-8')
-    st.download_button(
-        label="Descargar Registro de Impacto de Noticias como CSV",
-        data=news_csv,
-        file_name="news_impact.csv",
-        mime="text/csv",
-    )
