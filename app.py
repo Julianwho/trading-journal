@@ -33,14 +33,14 @@ if st.button("Agregar Operación"):
 # Mostrar operaciones en formato de tabla
 if not st.session_state['operations'].empty:
     df = st.session_state['operations']
-    
+
     # Definir el estilo para los resultados
     def highlight_result(s):
         return ['background-color: #ffcccc' if val < 0 else 'background-color: #ccffcc' for val in s]
 
     # Aplicar color a la columna 'Result' si existe
     if 'Result' in df.columns:
-        styled_df = df.style.apply(highlight_result, subset=['Result'])
+        styled_df = df.style.apply(highlight_result, subset=['Result']).set_precision(2)
     else:
         styled_df = df  # Sin aplicar estilo si no existe la columna
 
