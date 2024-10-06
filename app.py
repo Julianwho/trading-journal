@@ -8,7 +8,14 @@ if 'operations' not in st.session_state:
 # Función para agregar una operación
 def add_operation(entry_price, exit_price, stop_loss, take_profit):
     result = exit_price - entry_price  # Calcular el resultado de la operación
-    new_row = {'Entry Price': entry_price, 'Exit Price': exit_price, 'Stop Loss': stop_loss, 'Take Profit': take_profit, 'Result': result}
+    new_row = {
+        'Entry Price': entry_price,
+        'Exit Price': exit_price,
+        'Stop Loss': stop_loss,
+        'Take Profit': take_profit,
+        'Result': result
+    }
+    # Añadir la nueva fila al DataFrame existente
     st.session_state['operations'] = pd.concat([st.session_state['operations'], pd.DataFrame([new_row])], ignore_index=True)
 
 # Configuración de la interfaz
@@ -26,17 +33,16 @@ if st.button("Agregar Operación"):
 # Mostrar operaciones en formato de tabla
 if not st.session_state['operations'].empty:
     df = st.session_state['operations']
+    
+    # Definir el estilo para los resultados
+    def highlight_result(s):
+        return ['background-color: #ffcccc' if val < 0 else 'background-color: #ccffcc' for val in s]
 
-    # Comprobar si la columna 'Result' existe
-    if 'Result' in df.columns:
-        # Aplicar color a la columna de resultados
-        def highlight_result(s):
-            return ['background-color: #ffcccc' if val < 0 else 'background-color: #ccffcc' for val in s]
-
-        styled_df = df.style.apply(highlight_result, subset=['Result'])
-        
-        # Mostrar el DataFrame estilizado
-        st.write("### Registro de Operaciones")
-        st.dataframe(styled_df)
-    else:
-        st.write("Error: La columna 'Result' no existe en el DataFrame.")
+    # Aplicar color a la columna 'Result'
+    styled_df = df.style.apply(highlight_result, subset=['Result'])
+    
+    # Mostrar el DataFrame estilizado
+    st.write("### Registro de Operaciones")
+    st.dataframe(styled_df)
+else:
+    st.write("No hay operaciones registradas.")
