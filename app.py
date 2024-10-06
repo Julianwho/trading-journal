@@ -2,56 +2,42 @@ import streamlit as st
 import pandas as pd
 import datetime
 
-# Inicializar el DataFrame para almacenar las operaciones
+# Inicialización de la sesión de estado
 if 'operations' not in st.session_state:
-    st.session_state['operations'] = pd.DataFrame(columns=[
-        'Precio de Entrada',
-        'Precio de Salida',
-        'Dónde estaba tu Stop Loss',
-        'Dónde estaba tu Take Profit',
-        'Resultado de la operación'
-    ])
+    st.session_state['operations'] = pd.DataFrame(columns=['Entry Price', 'Exit Price', 'Stop Loss', 'Take Profit', 'Result'])
 
+# Función para agregar una operación
 def add_operation(entry_price, exit_price, stop_loss, take_profit, result):
-    new_row = pd.DataFrame({
-        'Precio de Entrada': [entry_price],
-        'Precio de Salida': [exit_price],
-        'Dónde estaba tu Stop Loss': [stop_loss],
-        'Dónde estaba tu Take Profit': [take_profit],
-        'Resultado de la operación': [result]
-    })
-    # Usar pd.concat en lugar de append
-    st.session_state['operations'] = pd.concat([st.session_state['operations'], new_row], ignore_index=True)
+    new_row = {'Entry Price': entry_price, 'Exit Price': exit_price, 'Stop Loss': stop_loss, 'Take Profit': take_profit, 'Result': result}
+    st.session_state['operations'] = pd.concat([st.session_state['operations'], pd.DataFrame([new_row])], ignore_index=True)
 
-def display_operations():
-    # Aplicar el color basado en el resultado
-    def highlight_result(row):
-        if row['Resultado de la operación'] < 0:
-            return ['background-color: lightcoral'] * len(row)
-        elif row['Resultado de la operación'] > 0:
-            return ['background-color: lightgreen'] * len(row)
-        return [''] * len(row)
+# Configuración de la interfaz
+st.title("Registro de Operaciones")
 
-    # Mostrar la tabla
-    styled_df = st.session_state['operations'].style.apply(highlight_result, axis=1)
-    st.write(styled_df)
+# Inputs para el registro de la operación
+entry_price = st.number_input("Precio de Entrada", min_value=0.0, step=0.01)
+exit_price = st.number_input("Precio de Salida", min_value=0.0, step=0.01)
+stop_loss = st.number_input("Donde estaba tu Stop Loss", min_value=0.0, step=0.01)
+take_profit = st.number_input("Donde estaba tu Take Profit", min_value=0.0, step=0.01)
 
-def main():
-    st.title("Registro de Operaciones")
+# Calcular resultado de la operación
+result = exit_price - entry_price  # Modifica esto según tus necesidades
 
-    # Entradas de usuario
-    entry_price = st.number_input("Precio de Entrada", step=0.01)
-    exit_price = st.number_input("Precio de Salida", step=0.01)
-    stop_loss = st.number_input("Dónde estaba tu Stop Loss", step=0.01)
-    take_profit = st.number_input("Dónde estaba tu Take Profit", step=0.01)
-    result = st.number_input("Resultado de la operación", step=1.0)
+if st.button("Agregar Operación"):
+    add_operation(entry_price, exit_price, stop_loss, take_profit, result)
 
-    if st.button("Agregar Operación"):
-        add_operation(entry_price, exit_price, stop_loss, take_profit, result)
-        st.success("Operación añadida exitosamente!")
+# Mostrar operaciones en formato de tabla
+if not st.session_state['operations'].empty:
+    df = st.session_state['operations']
 
-    # Mostrar operaciones
-    display_operations()
+    # Aplicar color a la columna de resultados
+    def highlight_result(s):
+        if s['Result'] < 0:
+            return ['background-color: #ffcccc']  # Color rojo suave
+        else:
+            return ['background-color: #ccffcc']  # Color verde suave
 
-if __name__ == "__main__":
-    main()
+    styled_df = df.style.apply(highlight_result, subset=['Result'])
+
+    st.write("### Registro de Operaciones")
+    st.dataframe(styled_df)
