@@ -5,3 +5,6 @@ seaborn
 Plotly
 yfinance
 pillow
+requests
+beautifulsoup4
+matplotlib
