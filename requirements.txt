@@ -1,5 +1,2 @@
-Flask
-request
-jsonify
-CORS
-qlite3
+pygame
+random
