@@ -1,82 +1,163 @@
-import streamlit as st
+import dash
+from dash import dcc, html
+from dash.dependencies import Input, Output, State
+import dash_bootstrap_components as dbc
 import pandas as pd
-import matplotlib.pyplot as plt
-import datetime
+import plotly.graph_objs as go
+from datetime import datetime
 
-# Define a function to handle user input
-def get_trade_input():
-    try:
-        currency_pair = st.text_input("Currency Pair (or Asset)")
-        open_datetime = st.date_input("Open Date") + datetime.timedelta(hours=st.time_input("Open Time").hour, minutes=st.time_input("Open Time").minute)
-        close_datetime = st.date_input("Close Date") + datetime.timedelta(hours=st.time_input("Close Time").hour, minutes=st.time_input("Close Time").minute)
-        order_type = st.selectbox("Order Type", ["Market", "Limit", "Stop"])
-        entry_price = st.number_input("Entry Price", format="%.5f")
-        exit_price = st.number_input("Exit Price", format="%.5f")
-        stop_loss = st.number_input("Stop-Loss", format="%.5f")
-        take_profit = st.number_input("Take-Profit", format="%.5f")
-        position_size = st.number_input("Position Size (in lots or units)")
-        spread_size = st.number_input("Spread Size")
-        slippage = st.number_input("Slippage")
-        commissions = st.number_input("Commissions and Costs")
-        reason_for_trade = st.text_area("Reason for Trade (Fundamental or Technical Analysis)")
-        personal_notes = st.text_area("Personal Notes")
-        return {
-            "Currency Pair": currency_pair,
-            "Open DateTime": open_datetime,
-            "Close DateTime": close_datetime,
-            "Order Type": order_type,
-            "Entry Price": entry_price,
-            "Exit Price": exit_price,
-            "Stop-Loss": stop_loss,
-            "Take-Profit": take_profit,
-            "Position Size": position_size,
-            "Spread Size": spread_size,
-            "Slippage": slippage,
-            "Commissions": commissions,
-            "Reason for Trade": reason_for_trade,
-            "Personal Notes": personal_notes
-        }
-    except Exception as e:
-        st.error("Error: " + str(e))
+# Inicializar la aplicación Dash
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
-# Define a function to calculate trade outcome
-def calculate_trade_outcome(trade_data):
-    try:
-        trade_outcome_pips = (trade_data["Exit Price"] - trade_data["Entry Price"]) * 10000 if trade_data["Currency Pair"] else 0
-        trade_outcome_money = trade_outcome_pips * trade_data["Position Size"] * 10  # Simplified calculation
-        return trade_outcome_pips, trade_outcome_money
-    except Exception as e:
-        st.error("Error: " + str(e))
+# Crear un DataFrame vacío para almacenar las operaciones
+df = pd.DataFrame(columns=['Par', 'Fecha_Apertura', 'Fecha_Cierre', 'Tipo_Orden', 'Precio_Entrada', 'Precio_Salida', 
+                           'Stop_Loss', 'Take_Profit', 'Tamaño_Posicion', 'Resultado_Pips', 'Resultado_Dinero', 
+                           'Spread', 'Slippage', 'Comisiones', 'Motivo', 'Notas'])
 
-# Define a function to display statistics and performance
-def display_statistics_and_performance(trade_data):
-    # TO DO: implement statistics and performance metrics
-    pass
+# Diseño del dashboard
+app.layout = dbc.Container([
+    dbc.Row([
+        dbc.Col(html.H1("Dashboard de Trading"), className="mb-4")
+    ]),
+    
+    dbc.Row([
+        dbc.Col([
+            dbc.Card([
+                dbc.CardHeader("Registro de Operaciones"),
+                dbc.CardBody([
+                    dbc.Row([
+                        dbc.Col(dcc.Input(id='par', placeholder='Par de divisas', type='text')),
+                        dbc.Col(dcc.DatePickerSingle(id='fecha-apertura', placeholder='Fecha de apertura')),
+                        dbc.Col(dcc.DatePickerSingle(id='fecha-cierre', placeholder='Fecha de cierre')),
+                    ]),
+                    dbc.Row([
+                        dbc.Col(dcc.Dropdown(id='tipo-orden', options=[
+                            {'label': 'Market', 'value': 'Market'},
+                            {'label': 'Limit', 'value': 'Limit'},
+                            {'label': 'Stop', 'value': 'Stop'}
+                        ], placeholder='Tipo de orden')),
+                        dbc.Col(dcc.Input(id='precio-entrada', placeholder='Precio de entrada', type='number')),
+                        dbc.Col(dcc.Input(id='precio-salida', placeholder='Precio de salida', type='number')),
+                    ]),
+                    dbc.Row([
+                        dbc.Col(dcc.Input(id='stop-loss', placeholder='Stop Loss', type='number')),
+                        dbc.Col(dcc.Input(id='take-profit', placeholder='Take Profit', type='number')),
+                        dbc.Col(dcc.Input(id='tamaño-posicion', placeholder='Tamaño de posición', type='number')),
+                    ]),
+                    dbc.Row([
+                        dbc.Col(dcc.Input(id='resultado-pips', placeholder='Resultado en pips', type='number')),
+                        dbc.Col(dcc.Input(id='resultado-dinero', placeholder='Resultado en dinero', type='number')),
+                        dbc.Col(dcc.Input(id='spread', placeholder='Spread', type='number')),
+                    ]),
+                    dbc.Row([
+                        dbc.Col(dcc.Input(id='slippage', placeholder='Slippage', type='number')),
+                        dbc.Col(dcc.Input(id='comisiones', placeholder='Comisiones', type='number')),
+                        dbc.Col(dcc.Dropdown(id='motivo', options=[
+                            {'label': 'Fundamental', 'value': 'Fundamental'},
+                            {'label': 'Técnico', 'value': 'Técnico'}
+                        ], placeholder='Motivo')),
+                    ]),
+                    dbc.Row([
+                        dbc.Col(dcc.Textarea(id='notas', placeholder='Notas personales', style={'width': '100%', 'height': 100})),
+                    ]),
+                    dbc.Button("Registrar Operación", id='submit-button', color="primary", className="mt-3"),
+                ])
+            ], className="mb-4"),
+            
+            dbc.Card([
+                dbc.CardHeader("Resumen de Operaciones"),
+                dbc.CardBody([
+                    dcc.Graph(id='resumen-grafico')
+                ])
+            ])
+        ], width=8),
+        
+        dbc.Col([
+            dbc.Card([
+                dbc.CardHeader("Estadísticas"),
+                dbc.CardBody([
+                    html.Div(id='estadisticas')
+                ])
+            ], className="mb-4"),
+            
+            dbc.Card([
+                dbc.CardHeader("Últimas Operaciones"),
+                dbc.CardBody([
+                    html.Div(id='ultimas-operaciones')
+                ])
+            ])
+        ], width=4)
+    ])
+], fluid=True)
 
-# Main app
-st.title("Interactive Trading Journal Dashboard")
+# Callback para registrar una nueva operación
+@app.callback(
+    Output('estadisticas', 'children'),
+    Output('ultimas-operaciones', 'children'),
+    Output('resumen-grafico', 'figure'),
+    Input('submit-button', 'n_clicks'),
+    [State('par', 'value'),
+     State('fecha-apertura', 'date'),
+     State('fecha-cierre', 'date'),
+     State('tipo-orden', 'value'),
+     State('precio-entrada', 'value'),
+     State('precio-salida', 'value'),
+     State('stop-loss', 'value'),
+     State('take-profit', 'value'),
+     State('tamaño-posicion', 'value'),
+     State('resultado-pips', 'value'),
+     State('resultado-dinero', 'value'),
+     State('spread', 'value'),
+     State('slippage', 'value'),
+     State('comisiones', 'value'),
+     State('motivo', 'value'),
+     State('notas', 'value')]
+)
+def registrar_operacion(n_clicks, par, fecha_apertura, fecha_cierre, tipo_orden, precio_entrada, precio_salida,
+                        stop_loss, take_profit, tamaño_posicion, resultado_pips, resultado_dinero, spread,
+                        slippage, comisiones, motivo, notas):
+    global df
+    if n_clicks is None:
+        return dash.no_update, dash.no_update, dash.no_update
+    
+    nueva_operacion = pd.DataFrame({
+        'Par': [par],
+        'Fecha_Apertura': [fecha_apertura],
+        'Fecha_Cierre': [fecha_cierre],
+        'Tipo_Orden': [tipo_orden],
+        'Precio_Entrada': [precio_entrada],
+        'Precio_Salida': [precio_salida],
+        'Stop_Loss': [stop_loss],
+        'Take_Profit': [take_profit],
+        'Tamaño_Posicion': [tamaño_posicion],
+        'Resultado_Pips': [resultado_pips],
+        'Resultado_Dinero': [resultado_dinero],
+        'Spread': [spread],
+        'Slippage': [slippage],
+        'Comisiones': [comisiones],
+        'Motivo': [motivo],
+        'Notas': [notas]
+    })
+    
+    df = pd.concat([df, nueva_operacion], ignore_index=True)
+    
+    # Actualizar estadísticas
+    estadisticas = html.Div([
+        html.P(f"Total de operaciones: {len(df)}"),
+        html.P(f"Ganancia total: {df['Resultado_Dinero'].sum():.2f}"),
+        html.P(f"Operaciones ganadoras: {len(df[df['Resultado_Dinero'] > 0])}")
+    ])
+    
+    # Actualizar últimas operaciones
+    ultimas_operaciones = html.Div([
+        html.P(f"{row['Par']} - {row['Resultado_Dinero']:.2f}") for _, row in df.tail(5).iterrows()
+    ])
+    
+    # Actualizar gráfico de resumen
+    fig = go.Figure(data=[go.Bar(x=df['Par'], y=df['Resultado_Dinero'])])
+    fig.update_layout(title='Resultado por Par de Divisas')
+    
+    return estadisticas, ultimas_operaciones, fig
 
-# Sidebar for navigation
-st.sidebar.title("Navigation")
-section = st.sidebar.radio("Go to", ["Complete Trade Log", "Statistics and Performance", "Psychology and Emotions Analysis"])
-
-# Complete Trade Log
-if section == "Complete Trade Log":
-    st.header("Record a New Trade")
-    trade_input = get_trade_input()
-    if st.button("Record Trade"):
-        trade_outcome_pips, trade_outcome_money = calculate_trade_outcome(trade_input)
-        trade_input["Trade Outcome (Pips)"] = trade_outcome_pips
-        trade_input["Trade Outcome (Money)"] = trade_outcome_money
-        st.write("Trade Recorded:", trade_input)
-
-# Statistics and Performance
-elif section == "Statistics and Performance":
-    st.header("Statistics and Performance")
-    display_statistics_and_performance(trade_input)
-
-# Psychology and Emotions Analysis
-elif section == "Psychology and Emotions Analysis":
-    st.header("Psychology and Emotions Analysis")
-    # TO DO: implement psychology and emotions analysis
-    pass
+if __name__ == '__main__':
+    app.run_server(debug=True)
