@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import datetime
+import datetime as dt
 import matplotlib.pyplot as plt
 
 # Configurar la página
@@ -42,8 +42,8 @@ if tab == "Registro de Operaciones":
 
     # Inputs para registrar operaciones
     pair = st.sidebar.selectbox("Par de Divisas", ["EUR/USD", "GBP/USD", "USD/JPY"])
-    open_datetime = st.sidebar.datetime_input("Fecha y Hora de Apertura", value=datetime.datetime.now())
-    close_datetime = st.sidebar.datetime_input("Fecha y Hora de Cierre", value=datetime.datetime.now())
+    open_datetime = st.sidebar.datetime_input("Fecha y Hora de Apertura", value=dt.datetime.now())
+    close_datetime = st.sidebar.datetime_input("Fecha y Hora de Cierre", value=dt.datetime.now())
     order_type = st.sidebar.selectbox("Tipo de Orden", ["Market", "Limit", "Stop"])
     entry_price = st.sidebar.number_input("Precio de Entrada", min_value=0.0)
     exit_price = st.sidebar.number_input("Precio de Salida", min_value=0.0)
