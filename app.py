@@ -41,19 +41,21 @@ if tab == "Registro de Operaciones":
         if st.sidebar.button("Agregar Operación"):
             # Cálculo de P&L
             pnl = final_result  # Tomar el resultado final directamente
-            new_trade_row = {
-                "Open Date": open_datetime,
-                "Entry Price": entry_price,
-                "Exit Price": exit_price,
-                "P&L in Money": pnl,
-                "Final Result": final_result,
-                "Image": image_file,
-                "Motivo de la Operación": motivo_operacion,
-                "FOMO": fomo,
-                "Trading Revenge": trading_revenge,
-                "Impatience": impatience
-            }
-            st.session_state.trade_df = st.session_state.trade_df.append(new_trade_row, ignore_index=True)
+            new_trade_row = pd.DataFrame({
+                "Open Date": [open_datetime],
+                "Entry Price": [entry_price],
+                "Exit Price": [exit_price],
+                "P&L in Money": [pnl],
+                "Final Result": [final_result],
+                "Image": [image_file],
+                "Motivo de la Operación": [motivo_operacion],
+                "FOMO": [fomo],
+                "Trading Revenge": [trading_revenge],
+                "Impatience": [impatience]
+            })
+
+            # Usar pd.concat para agregar la nueva fila
+            st.session_state.trade_df = pd.concat([st.session_state.trade_df, new_trade_row], ignore_index=True)
 
         # Mostrar el registro de operaciones
         st.subheader("Operaciones Registradas")
