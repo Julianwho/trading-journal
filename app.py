@@ -27,12 +27,16 @@ if st.button("Agregar Operación"):
 if not st.session_state['operations'].empty:
     df = st.session_state['operations']
 
-    # Aplicar color a la columna de resultados
-    def highlight_result(s):
-        return ['background-color: #ffcccc' if val < 0 else 'background-color: #ccffcc' for val in s]
+    # Comprobar si la columna 'Result' existe
+    if 'Result' in df.columns:
+        # Aplicar color a la columna de resultados
+        def highlight_result(s):
+            return ['background-color: #ffcccc' if val < 0 else 'background-color: #ccffcc' for val in s]
 
-    styled_df = df.style.apply(highlight_result, subset=['Result'])
-    
-    # Mostrar el DataFrame estilizado
-    st.write("### Registro de Operaciones")
-    st.dataframe(styled_df)
+        styled_df = df.style.apply(highlight_result, subset=['Result'])
+        
+        # Mostrar el DataFrame estilizado
+        st.write("### Registro de Operaciones")
+        st.dataframe(styled_df)
+    else:
+        st.write("Error: La columna 'Result' no existe en el DataFrame.")
