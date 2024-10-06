@@ -19,9 +19,9 @@ with st.sidebar:
     st.header("Agregar Nueva Operación")
     fecha = st.date_input("Fecha")
     simbolo = st.text_input("Símbolo")
-    precio_entrada = st.number_input("Precio de Entrada")
-    precio_salida = st.number_input("Precio de Salida")
-    tamano_posicion = st.number_input("Tamaño de la Posición")
+    precio_entrada = st.number_input("Precio de Entrada", min_value=0.0, step=0.01)
+    precio_salida = st.number_input("Precio de Salida", min_value=0.0, step=0.01)
+    tamano_posicion = st.number_input("Tamaño de la Posición", min_value=0.0, step=0.01)
     
     if st.button("Agregar Operación"):
         datos_operacion = {
