@@ -27,11 +27,18 @@ if st.button("Agregar Operación"):
 if not st.session_state['operations'].empty:
     df = st.session_state['operations']
 
+    # Mostrar el DataFrame para verificar las columnas
+    st.write("### DataFrame de Operaciones")
+    st.dataframe(df)
+
     # Aplicar color a la columna de resultados
     def highlight_result(s):
         return ['background-color: #ffcccc' if val < 0 else 'background-color: #ccffcc' for val in s]
 
-    styled_df = df.style.apply(highlight_result, subset=['Result'])
+    try:
+        styled_df = df.style.apply(highlight_result, subset=['Result'])
+        st.write("### Registro de Operaciones")
+        st.dataframe(styled_df)
+    except KeyError as e:
+        st.error(f"Error al aplicar el estilo al DataFrame: {e}")
 
-    st.write("### Registro de Operaciones")
-    st.dataframe(styled_df)
