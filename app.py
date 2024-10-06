@@ -1,103 +1,87 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
-import plotly.express as px
-import plotly.graph_objects as go
-from datetime import datetime, timedelta
+from gestor_datos import GestorDatos
+from analisis import calcular_metricas_rendimiento, calcular_drawdown, analizar_estado_emocional
+from visualizaciones import crear_curva_capital, crear_distribucion_operaciones, crear_grafico_torta_ganadoras_perdedoras, crear_grafico_estado_emocional
 
-# Necesitarás instalar:
-# pip install streamlit pandas plotly numpy
+st.set_page_config(layout="wide", page_title="Diario de Trading")
 
-# Configuración de la página
-st.set_page_config(page_title="Trading Dashboard", layout="wide")
+gestor_datos = GestorDatos('datos/diario_trading.xlsx')
 
-# Función para generar datos de ejemplo
-def generate_sample_data():
-    dates = pd.date_range(start='2023-01-01', end='2024-01-01', freq='D')
-    balance = np.cumsum(np.random.normal(0.1, 1, len(dates))) + 10000
-    equity = balance + np.random.normal(0, 100, len(dates))
+st.title("Dashboard de Diario de Trading")
+
+# Barra lateral para entrada de datos
+with st.sidebar:
+    st.header("Agregar Nueva Operación")
+    fecha = st.date_input("Fecha")
+    simbolo = st.text_input("Símbolo")
+    precio_entrada = st.number_input("Precio de Entrada")
+    precio_salida = st.number_input("Precio de Salida")
+    tamano_posicion = st.number_input("Tamaño de la Posición")
     
-    trades = pd.DataFrame({
-        'date': dates,
-        'balance': balance,
-        'equity': equity,
-        'profit_loss': np.random.normal(0, 100, len(dates)),
-        'pair': np.random.choice(['EUR/USD', 'GBP/USD', 'USD/JPY'], len(dates)),
-        'direction': np.random.choice(['Long', 'Short'], len(dates)),
-    })
-    return trades
+    if st.button("Agregar Operación"):
+        datos_operacion = {
+            'Fecha': fecha,
+            'Símbolo': simbolo,
+            'Precio de Entrada': precio_entrada,
+            'Precio de Salida': precio_salida,
+            'Tamaño de la Posición': tamano_posicion,
+            'Beneficio/Pérdida': (precio_salida - precio_entrada) * tamano_posicion
+        }
+        gestor_datos.escribir_operacion(datos_operacion)
+        st.success("Operación agregada con éxito!")
 
-# Generar datos
-trades_df = generate_sample_data()
+    st.header("Registro de Estado Emocional")
+    fecha_emocional = st.date_input("Fecha", key="fecha_emocional")
+    nivel_estres = st.slider("Nivel de Estrés", 1, 10)
+    nivel_confianza = st.slider("Nivel de Confianza", 1, 10)
+    
+    if st.button("Registrar Estado Emocional"):
+        datos_emocionales = {
+            'Fecha': fecha_emocional,
+            'Nivel de Estrés': nivel_estres,
+            'Nivel de Confianza': nivel_confianza
+        }
+        gestor_datos.escribir_estado_emocional(datos_emocionales)
+        st.success("Estado emocional registrado con éxito!")
 
-# Título principal
-st.title('Trading Dashboard')
+# Dashboard principal
+df_operaciones = gestor_datos.leer_operaciones()
+df_emocional = gestor_datos.leer_estado_emocional()
 
-# Sección 1: Resumen General
-st.header('Resumen General')
-col1, col2, col3, col4 = st.columns(4)
+col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.metric("Balance Total", f"${trades_df['balance'].iloc[-1]:,.2f}")
+    st.metric("Total de Operaciones", len(df_operaciones))
+
 with col2:
-    st.metric("Equity", f"${trades_df['equity'].iloc[-1]:,.2f}")
+    st.metric("Beneficio/Pérdida Total", f"${df_operaciones['Beneficio/Pérdida'].sum():.2f}")
+
 with col3:
-    st.metric("P/L Acumulado", f"${trades_df['profit_loss'].sum():,.2f}")
-with col4:
-    st.metric("Win Rate", f"{(trades_df['profit_loss'] > 0).mean() * 100:.1f}%")
+    tasa_aciertos = (df_operaciones['Beneficio/Pérdida'] > 0).mean()
+    st.metric("Tasa de Aciertos", f"{tasa_aciertos:.2%}")
 
-# Gráfico de Balance y Equity
-fig_balance = go.Figure()
-fig_balance.add_trace(go.Scatter(x=trades_df['date'], y=trades_df['balance'],
-                                name='Balance'))
-fig_balance.add_trace(go.Scatter(x=trades_df['date'], y=trades_df['equity'],
-                                name='Equity'))
-fig_balance.update_layout(title='Evolución de Balance y Equity')
-st.plotly_chart(fig_balance, use_container_width=True)
-
-# Sección 2: Estadísticas de Trading
-st.header('Estadísticas de Trading')
+st.plotly_chart(crear_curva_capital(df_operaciones), use_container_width=True)
 
 col1, col2 = st.columns(2)
 
 with col1:
-    # Distribución de Ganancias/Pérdidas
-    fig_dist = px.histogram(trades_df, x='profit_loss', 
-                           title='Distribución de Ganancias/Pérdidas')
-    st.plotly_chart(fig_dist, use_container_width=True)
+    st.plotly_chart(crear_distribucion_operaciones(df_operaciones), use_container_width=True)
 
 with col2:
-    # Rendimiento por Par
-    fig_pair = px.box(trades_df, x='pair', y='profit_loss',
-                      title='Rendimiento por Par de Divisas')
-    st.plotly_chart(fig_pair, use_container_width=True)
+    st.plotly_chart(crear_grafico_torta_ganadoras_perdedoras(df_operaciones), use_container_width=True)
 
-# Sección 3: Métricas Adicionales
-st.header('Métricas Adicionales')
-col1, col2, col3 = st.columns(3)
+# Sección de Psicología
+st.header("Análisis Psicológico")
+
+col1, col2 = st.columns(2)
 
 with col1:
-    st.metric("Mejor Trade", f"${trades_df['profit_loss'].max():,.2f}")
+    st.plotly_chart(crear_grafico_estado_emocional(df_emocional), use_container_width=True)
+
 with col2:
-    st.metric("Peor Trade", f"${trades_df['profit_loss'].min():,.2f}")
-with col3:
-    st.metric("Número Total de Trades", len(trades_df))
+    correlacion_estres_rendimiento = analizar_estado_emocional(df_emocional, df_operaciones)
+    st.metric("Correlación Estrés-Rendimiento", f"{correlacion_estres_rendimiento:.2f}")
+    st.write("Una correlación negativa indica que a mayor estrés, menor rendimiento.")
 
-# Sección 4: Registro de Operaciones
-st.header('Registro de Operaciones')
-st.dataframe(trades_df.tail(10)[['date', 'pair', 'direction', 'profit_loss']])
-
-# Sección 5: Filtros
-st.sidebar.header('Filtros')
-date_range = st.sidebar.date_input(
-    "Rango de fechas",
-    [trades_df['date'].min(), trades_df['date'].max()]
-)
-selected_pairs = st.sidebar.multiselect(
-    'Pares de divisas',
-    options=trades_df['pair'].unique(),
-    default=trades_df['pair'].unique()
-)
-
-if __name__ == '__main__':
-    st.sidebar.info('Este es un dashboard de ejemplo. Los datos son generados aleatoriamente.')
+# Añadir más secciones y visualizaciones según sea necesario
