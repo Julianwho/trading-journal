@@ -38,9 +38,12 @@ if not st.session_state['operations'].empty:
     def highlight_result(s):
         return ['background-color: #ffcccc' if val < 0 else 'background-color: #ccffcc' for val in s]
 
-    # Aplicar color a la columna 'Result'
-    styled_df = df.style.apply(highlight_result, subset=['Result'])
-    
+    # Aplicar color a la columna 'Result' si existe
+    if 'Result' in df.columns:
+        styled_df = df.style.apply(highlight_result, subset=['Result'])
+    else:
+        styled_df = df  # Sin aplicar estilo si no existe la columna
+
     # Mostrar el DataFrame estilizado
     st.write("### Registro de Operaciones")
     st.dataframe(styled_df)
