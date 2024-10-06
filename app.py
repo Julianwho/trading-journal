@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+from datetime import datetime  # Asegúrate de importar datetime
 
 # Configuración inicial
 st.set_page_config(page_title="Trading Journal", layout="wide")
@@ -41,8 +42,8 @@ if tab == "Registro de Operaciones":
     st.sidebar.header("Agregar Registro de Operación")
 
     pair = st.sidebar.text_input("Par de divisas (o activo)")
-    open_datetime = st.sidebar.datetime_input("Fecha y Hora de Apertura", value=pd.to_datetime("now"))
-    close_datetime = st.sidebar.datetime_input("Fecha y Hora de Cierre", value=pd.to_datetime("now"))
+    open_datetime = st.sidebar.datetime_input("Fecha y Hora de Apertura", value=datetime.now())
+    close_datetime = st.sidebar.datetime_input("Fecha y Hora de Cierre", value=datetime.now())
     order_type = st.sidebar.selectbox("Tipo de Orden", 
                                        options=["Market", "Limit", "Stop"])
     entry_price = st.sidebar.number_input("Precio de Entrada", min_value=0.0)
