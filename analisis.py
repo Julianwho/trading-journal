@@ -21,5 +21,8 @@ def calcular_drawdown(curva_capital):
 
 def analizar_estado_emocional(df_emocional, df_operaciones):
     df_combinado = pd.merge(df_emocional, df_operaciones, on='Fecha', how='inner')
-    correlacion = df_combinado['Nivel de Estrés'].corr(df_combinado['Beneficio/Pérdida'])
-    return correlacion
+    if 'Nivel de Estrés' in df_combinado.columns and 'Beneficio/Pérdida' in df_combinado.columns:
+        correlacion = df_combinado['Nivel de Estrés'].corr(df_combinado['Beneficio/Pérdida'])
+        return correlacion
+    else:
+        return 0  # Valor por defecto si no hay datos suficientes
