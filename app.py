@@ -1,3 +1,38 @@
+import streamlit as st
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Configuración inicial
+st.set_page_config(page_title="Trading Journal", layout="wide")
+
+# Función para cargar los datos
+@st.cache_data
+def load_trade_data():
+    try:
+        return pd.read_csv("trades.csv")
+    except FileNotFoundError:
+        return pd.DataFrame(columns=["Pair", "Open Date", "Close Date", "Order Type", 
+                                      "Entry Price", "Exit Price", "Stop Loss", 
+                                      "Take Profit", "Position Size", "P&L in Pips", 
+                                      "P&L in Money", "Spread", "Commission", 
+                                      "Reason", "Notes"])
+
+# Función para guardar los datos
+def save_trade_data(df):
+    df.to_csv("trades.csv", index=False)
+
+# Cargar los datos de operaciones
+trade_df = load_trade_data()
+
+# Sidebar para navegación
+st.sidebar.title("Navegación")
+tab = st.sidebar.radio("Selecciona una pestaña", 
+                        ["Registro de Operaciones", "Estadísticas y Rendimiento", 
+                         "Análisis de Psicología y Emociones"])
+
+# Pestaña: Registro de Operaciones
 if tab == "Registro de Operaciones":
     st.title("Registro de Operaciones")
 
@@ -63,3 +98,41 @@ if tab == "Registro de Operaciones":
     # Mostrar la tabla de registros de operaciones existentes
     st.subheader("Historial de Operaciones")
     st.dataframe(trade_df)
+
+# Pestaña: Estadísticas y Rendimiento
+elif tab == "Estadísticas y Rendimiento":
+    st.title("Estadísticas y Rendimiento")
+
+    if trade_df.empty:
+        st.warning("No hay operaciones registradas para mostrar estadísticas.")
+    else:
+        # Calcular estadísticas
+        total_trades = len(trade_df)
+        win_trades = trade_df[trade_df["P&L in Money"] > 0]
+        loss_trades = trade_df[trade_df["P&L in Money"] <= 0]
+        win_rate = len(win_trades) / total_trades * 100 if total_trades > 0 else 0
+        avg_win = win_trades["P&L in Money"].mean() if not win_trades.empty else 0
+        avg_loss = loss_trades["P&L in Money"].mean() if not loss_trades.empty else 0
+
+        # Gráficos
+        st.subheader("Estadísticas Generales")
+        st.write(f"Total de operaciones: {total_trades}")
+        st.write(f"Tasa de Ganancia: {win_rate:.2f}%")
+        st.write(f"Promedio de Ganancias: ${avg_win:.2f}")
+        st.write(f"Promedio de Pérdidas: ${avg_loss:.2f}")
+
+        # Gráfico de P&L
+        plt.figure(figsize=(10, 5))
+        sns.lineplot(data=trade_df, x="Open Date", y="P&L in Money", marker='o')
+        plt.title("Ganancias y Pérdidas a lo Largo del Tiempo")
+        plt.xlabel("Fecha de Apertura")
+        plt.ylabel("P&L en Dinero")
+        plt.xticks(rotation=45)
+        st.pyplot(plt)
+
+# Pestaña: Análisis de Psicología y Emociones
+elif tab == "Análisis de Psicología y Emociones":
+    st.title("Análisis de Psicología y Emociones")
+    
+    # Aquí puedes agregar el contenido que desees para esta sección.
+    st.write("Pronto se implementarán herramientas para el análisis de emociones y psicología.")
