@@ -34,6 +34,7 @@ if tab == "Registro de Operaciones":
         trade_reason = st.selectbox("Motivo de la operación", ["Fundamental", "Técnico"])
         personal_notes = st.text_area("Notas personales")
 
+        # Añadir el botón de envío
         submitted = st.form_submit_button("Registrar Operación")
 
         if submitted:
@@ -127,6 +128,7 @@ elif tab == "Análisis de Psicología y Emociones":
         trading_revenge = st.checkbox("Trading Revenge")
         emotional_notes = st.text_area("Notas sobre tus emociones")
 
+        # Añadir el botón de envío
         submitted_emotion = st.form_submit_button("Registrar Emoción")
 
         if submitted_emotion:
