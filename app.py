@@ -42,8 +42,11 @@ if tab == "Registro de Operaciones":
 
     # Inputs para registrar operaciones
     pair = st.sidebar.selectbox("Par de Divisas", ["EUR/USD", "GBP/USD", "USD/JPY"])
+    
+    # Asegúrate de que el valor por defecto para datetime_input sea un datetime
     open_datetime = st.sidebar.datetime_input("Fecha y Hora de Apertura", value=dt.datetime.now())
     close_datetime = st.sidebar.datetime_input("Fecha y Hora de Cierre", value=dt.datetime.now())
+    
     order_type = st.sidebar.selectbox("Tipo de Orden", ["Market", "Limit", "Stop"])
     entry_price = st.sidebar.number_input("Precio de Entrada", min_value=0.0)
     exit_price = st.sidebar.number_input("Precio de Salida", min_value=0.0)
