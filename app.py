@@ -10,10 +10,24 @@ st.set_page_config(page_title="Trading Journal", layout="wide")
 # Cargar datos
 try:
     trade_df = pd.read_csv("trades.csv")
+    # Verificar si las columnas necesarias existen
+    expected_columns = ["Par de Divisas", "Fecha y Hora de Apertura", "Fecha y Hora de Cierre",
+                        "Tipo de Orden", "Precio de Entrada", "Precio de Salida", "Stop-Loss",
+                        "Take-Profit", "Tamaño de la Posición", "Resultado en Pips", 
+                        "Resultado en Dinero", "Comisiones", "Motivo", "Notas", "Imagen"]
+    
+    # Verifica si las columnas esperadas están presentes
+    for col in expected_columns:
+        if col not in trade_df.columns:
+            trade_df[col] = pd.Series(dtype='object')  # Crear columnas faltantes
+
     # Convertir las fechas a formato datetime
-    trade_df['Fecha y Hora de Apertura'] = pd.to_datetime(trade_df['Fecha y Hora de Apertura'])
-    trade_df['Fecha y Hora de Cierre'] = pd.to_datetime(trade_df['Fecha y Hora de Cierre'])
+    if 'Fecha y Hora de Apertura' in trade_df.columns:
+        trade_df['Fecha y Hora de Apertura'] = pd.to_datetime(trade_df['Fecha y Hora de Apertura'], errors='coerce')
+    if 'Fecha y Hora de Cierre' in trade_df.columns:
+        trade_df['Fecha y Hora de Cierre'] = pd.to_datetime(trade_df['Fecha y Hora de Cierre'], errors='coerce')
 except FileNotFoundError:
+    # Si el archivo no existe, crea un DataFrame vacío con las columnas necesarias
     trade_df = pd.DataFrame(columns=["Par de Divisas", "Fecha y Hora de Apertura", "Fecha y Hora de Cierre",
                                       "Tipo de Orden", "Precio de Entrada", "Precio de Salida", "Stop-Loss",
                                       "Take-Profit", "Tamaño de la Posición", "Resultado en Pips", 
@@ -93,7 +107,7 @@ if tab == "Estadísticas y Rendimiento":
     st.header("Estadísticas y Rendimiento")
     if not trade_df.empty:
         # Asegurarse de que las fechas son del tipo datetime
-        trade_df['Fecha y Hora de Apertura'] = pd.to_datetime(trade_df['Fecha y Hora de Apertura'])
+        trade_df['Fecha y Hora de Apertura'] = pd.to_datetime(trade_df['Fecha y Hora de Apertura'], errors='coerce')
         
         # Calcular estadísticas
         total_trades = trade_df.shape[0]
