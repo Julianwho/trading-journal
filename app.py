@@ -2,107 +2,100 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import datetime
-import os
 
-# Configuración inicial
+# Configurar el título de la aplicación
 st.title("Trading Journal")
-tab = st.sidebar.selectbox("Selecciona una pestaña", 
-                            ["Registro de Operaciones", 
-                             "Estadísticas y Rendimiento", 
-                             "Análisis de Psicología y Emociones"])
 
-# Crear un archivo CSV si no existe para el diario emocional
-if not os.path.isfile('emotional_journal.csv'):
-    df = pd.DataFrame(columns=["Fecha", "Emotion Before", "Emotion During", "Emotion After", "Limiting Beliefs"])
-    df.to_csv('emotional_journal.csv', index=False)
+# Seleccionar la pestaña
+tabs = ["Registro de Operaciones", "Estadísticas y Rendimiento", "Análisis de Psicología y Emociones"]
+tab = st.sidebar.selectbox("Selecciona una pestaña", tabs)
 
-# Crear un archivo CSV si no existe para las operaciones
-if not os.path.isfile('trade_journal.csv'):
-    trade_df = pd.DataFrame(columns=["Par de divisas", "Fecha de Apertura", "Fecha de Cierre", "Tipo de Orden", 
-                                      "Precio de Entrada", "Precio de Salida", "Stop-Loss", "Take-Profit", 
-                                      "Tamaño de la Posición", "Resultado en Pips", "Resultado en Dinero", 
-                                      "Spread", "Slippage", "Comisiones", "Motivo de la Operación", "Notas"])
-    trade_df.to_csv('trade_journal.csv', index=False)
+# Ruta del archivo CSV
+file_path = 'trade_journal.csv'
 
 # Pestaña de Registro de Operaciones
 if tab == "Registro de Operaciones":
     st.subheader("Registro de Operaciones Completo")
 
-    # Formulario para registrar operaciones
+    # Formulario para registrar una operación
     with st.form("trade_form"):
         currency_pair = st.text_input("Par de divisas (o activo)")
-        open_datetime = st.date_input("Fecha de Apertura", datetime.date.today())
-        close_datetime = st.date_input("Fecha de Cierre", datetime.date.today())
-        order_type = st.selectbox("Tipo de Orden", options=["Market", "Limit", "Stop"])
-        entry_price = st.number_input("Precio de Entrada", min_value=0.0, format="%.2f")
-        exit_price = st.number_input("Precio de Salida", min_value=0.0, format="%.2f")
-        stop_loss = st.number_input("Stop-Loss", min_value=0.0, format="%.2f")
-        take_profit = st.number_input("Take-Profit", min_value=0.0, format="%.2f")
-        position_size = st.number_input("Tamaño de la Posición (en lotes)", min_value=0.0, format="%.2f")
-        spread = st.number_input("Tamaño del Spread", min_value=0.0, format="%.2f")
-        slippage = st.number_input("Slippage", min_value=0.0, format="%.2f")
-        commissions = st.number_input("Comisiones", min_value=0.0, format="%.2f")
-        trade_reason = st.selectbox("Motivo de la Operación", options=["Fundamental", "Técnico"])
-        notes = st.text_area("Notas Personales")
+        open_time = st.datetime_input("Fecha y hora de apertura", datetime.datetime.now())
+        close_time = st.datetime_input("Fecha y hora de cierre", datetime.datetime.now())
+        order_type = st.selectbox("Tipo de orden", ["Market", "Limit", "Stop"])
+        entry_price = st.number_input("Precio de entrada", format="%.2f")
+        exit_price = st.number_input("Precio de salida", format="%.2f")
+        stop_loss = st.number_input("Stop-Loss", format="%.2f")
+        take_profit = st.number_input("Take-Profit", format="%.2f")
+        position_size = st.number_input("Tamaño de la posición (lotes o unidades)", format="%.2f")
+        spread = st.number_input("Tamaño del spread", format="%.2f")
+        slippage = st.number_input("Slippage", format="%.2f")
+        commission = st.number_input("Comisiones y costos asociados", format="%.2f")
+        trade_reason = st.selectbox("Motivo de la operación", ["Fundamental", "Técnico"])
+        personal_notes = st.text_area("Notas personales")
 
-        submit_button = st.form_submit_button("Registrar Operación")
+        submitted = st.form_submit_button("Registrar Operación")
 
-    if submit_button:
-        # Calcular resultados
-        result_pips = (exit_price - entry_price) / (0.0001 if order_type in ["Market", "Limit"] else 0.01)
-        result_money = result_pips * position_size - commissions
-        
-        # Guardar en el archivo CSV
-        trade_entry = {
-            "Par de divisas": currency_pair,
-            "Fecha de Apertura": open_datetime,
-            "Fecha de Cierre": close_datetime,
-            "Tipo de Orden": order_type,
-            "Precio de Entrada": entry_price,
-            "Precio de Salida": exit_price,
-            "Stop-Loss": stop_loss,
-            "Take-Profit": take_profit,
-            "Tamaño de la Posición": position_size,
-            "Resultado en Pips": result_pips,
-            "Resultado en Dinero": result_money,
-            "Spread": spread,
-            "Slippage": slippage,
-            "Comisiones": commissions,
-            "Motivo de la Operación": trade_reason,
-            "Notas": notes
-        }
+        if submitted:
+            # Calcular el resultado
+            result_money = (exit_price - entry_price) * position_size - commission
+            result_pips = (exit_price - entry_price) * 10000  # Asumiendo que es un par de divisas
 
-        # Leer el archivo CSV existente
-        trade_df = pd.read_csv('trade_journal.csv')
-        # Agregar la nueva entrada
-        trade_df = trade_df.append(trade_entry, ignore_index=True)
-        # Guardar de nuevo en el CSV
-        trade_df.to_csv('trade_journal.csv', index=False)
+            # Crear un DataFrame para guardar la operación
+            trade_data = {
+                "Par de divisas": currency_pair,
+                "Fecha Apertura": open_time,
+                "Fecha Cierre": close_time,
+                "Tipo de Orden": order_type,
+                "Precio de Entrada": entry_price,
+                "Precio de Salida": exit_price,
+                "Stop-Loss": stop_loss,
+                "Take-Profit": take_profit,
+                "Tamaño de la Posición": position_size,
+                "Resultado en Dinero": result_money,
+                "Resultado en Pips": result_pips,
+                "Spread": spread,
+                "Slippage": slippage,
+                "Comisiones": commission,
+                "Motivo": trade_reason,
+                "Notas": personal_notes,
+            }
 
-        st.success("Operación registrada exitosamente!")
+            # Guardar en CSV
+            if not pd.DataFrame(trade_data).empty:
+                df = pd.DataFrame([trade_data])
+                df.to_csv(file_path, mode='a', header=not pd.io.common.file_exists(file_path), index=False)
+
+            st.success("Operación registrada correctamente!")
 
 # Pestaña de Estadísticas y Rendimiento
 elif tab == "Estadísticas y Rendimiento":
     st.subheader("Estadísticas y Rendimiento")
 
     # Leer el archivo CSV de operaciones
-    trade_df = pd.read_csv('trade_journal.csv')
+    trade_df = pd.read_csv(file_path)
 
     if not trade_df.empty:
-        # Calcular estadísticas
+        # Asegurarse de que las columnas sean del tipo correcto
         trade_df['Resultado en Dinero'] = trade_df['Resultado en Dinero'].astype(float)
+
+        # Calcular estadísticas
         total_pnL = trade_df['Resultado en Dinero'].sum()
         win_rate = len(trade_df[trade_df['Resultado en Dinero'] > 0]) / len(trade_df) * 100
         average_profit = trade_df['Resultado en Dinero'].mean()
         average_loss = trade_df[trade_df['Resultado en Dinero'] < 0]['Resultado en Dinero'].mean()
-        
-        st.write(f"Ganancias y Pérdidas Totales: {total_pnL:.2f} €")
-        st.write(f"Tasa de Aciertos: {win_rate:.2f}%")
-        st.write(f"Promedio de Ganancias: {average_profit:.2f} €")
-        st.write(f"Promedio de Pérdidas: {average_loss:.2f} €")
+        max_consecutive_wins = (trade_df['Resultado en Dinero'] > 0).astype(int).groupby(trade_df['Resultado en Dinero'].lt(0).cumsum()).sum().max()
+        max_consecutive_losses = (trade_df['Resultado en Dinero'] < 0).astype(int).groupby(trade_df['Resultado en Dinero'].gt(0).cumsum()).sum().max()
+
+        st.write(f"**Ganancias y Pérdidas Totales:** {total_pnL:.2f} €")
+        st.write(f"**Tasa de Aciertos:** {win_rate:.2f}%")
+        st.write(f"**Promedio de Ganancias:** {average_profit:.2f} €")
+        st.write(f"**Promedio de Pérdidas:** {average_loss:.2f} €")
+        st.write(f"**Máxima Racha Ganadora:** {max_consecutive_wins}")
+        st.write(f"**Máxima Racha Perdedora:** {max_consecutive_losses}")
 
         # Gráfico de Ganancias y Pérdidas
-        fig_pnl = px.histogram(trade_df, x='Resultado en Dinero', 
+        fig_pnl = px.histogram(trade_df, x='Resultado en Dinero',
                                 title='Distribución de Ganancias y Pérdidas',
                                 labels={'Resultado en Dinero': 'Resultado (en €)'},
                                 template='plotly_white')
@@ -110,79 +103,61 @@ elif tab == "Estadísticas y Rendimiento":
 
         # Gráfico de Ratio de Aciertos
         st.subheader("Gráfico de Ratio de Aciertos")
-        fig_win_rate = px.pie(names=['Ganadoras', 'Perdedoras'], 
-                               values=[len(trade_df[trade_df['Resultado en Dinero'] > 0]), 
+        fig_win_rate = px.pie(names=['Ganadoras', 'Perdedoras'],
+                               values=[len(trade_df[trade_df['Resultado en Dinero'] > 0]),
                                        len(trade_df[trade_df['Resultado en Dinero'] <= 0])],
                                title='Ratio de Aciertos')
         st.plotly_chart(fig_win_rate)
+
+    else:
+        st.warning("No hay operaciones registradas. Registra al menos una operación para ver estadísticas.")
 
 # Pestaña de Análisis de Psicología y Emociones
 elif tab == "Análisis de Psicología y Emociones":
     st.subheader("Análisis de Psicología y Emociones")
 
-    # Sección para registrar emociones
-    st.subheader("Diario Emocional")
-
-    # Campo para ingresar la fecha
-    date = st.date_input("Fecha de la operación", datetime.date.today())
-    
     # Formulario para registrar emociones
-    emotion_before = st.selectbox("¿Cómo te sentías antes de la operación?", 
-                                   options=["Estrés", "Ansiedad", "Confianza", "Indecisión", "Tranquilo"])
-    emotion_during = st.selectbox("¿Cómo te sentías durante la operación?", 
-                                   options=["Estrés", "Ansiedad", "Confianza", "Indecisión", "Tranquilo"])
-    emotion_after = st.selectbox("¿Cómo te sentías después de la operación?", 
-                                  options=["Estrés", "Ansiedad", "Confianza", "Indecisión", "Tranquilo"])
+    with st.form("emotion_form"):
+        emotion_date = st.date_input("Fecha de la operación", datetime.datetime.now())
+        emotion_before = st.selectbox("Emoción antes de la operación", ["Estrés", "Ansiedad", "Confianza", "Neutral"])
+        emotion_during = st.selectbox("Emoción durante la operación", ["Estrés", "Ansiedad", "Confianza", "Neutral"])
+        emotion_after = st.selectbox("Emoción después de la operación", ["Estrés", "Ansiedad", "Confianza", "Neutral"])
+        fomo = st.checkbox("FOMO")
+        impatience = st.checkbox("Impatience")
+        trading_revenge = st.checkbox("Trading Revenge")
+        emotional_notes = st.text_area("Notas sobre tus emociones")
 
-    # Nuevas emociones
-    fomo = st.checkbox("¿Experimentaste FOMO?")
-    impatience = st.checkbox("¿Sentiste impaciencia?")
-    trading_revenge = st.checkbox("¿Te sentiste impulsado por Trading Revenge?")
+        submitted_emotion = st.form_submit_button("Registrar Emoción")
 
-    # Registrar creencias limitantes
-    limiting_beliefs = st.text_area("Identifica y analiza tus creencias limitantes")
+        if submitted_emotion:
+            # Guardar las emociones en un DataFrame
+            emotion_data = {
+                "Fecha": emotion_date,
+                "Emotion Before": emotion_before,
+                "Emotion During": emotion_during,
+                "Emotion After": emotion_after,
+                "FOMO": fomo,
+                "Impatience": impatience,
+                "Trading Revenge": trading_revenge,
+                "Emotional Notes": emotional_notes,
+            }
 
-    # Botón para guardar las emociones
-    if st.button("Guardar Emociones"):
-        # Agregar registro de emociones a un archivo CSV
-        emotion_entry = {
-            "Fecha": date,
-            "Emotion Before": emotion_before,
-            "Emotion During": emotion_during,
-            "Emotion After": emotion_after,
-            "FOMO": fomo,
-            "Impatience": impatience,
-            "Trading Revenge": trading_revenge,
-            "Limiting Beliefs": limiting_beliefs
-        }
-        
-        # Leer el archivo CSV existente
-        df = pd.read_csv('emotional_journal.csv')
-        # Agregar la nueva entrada
-        df = df.append(emotion_entry, ignore_index=True)
-        # Guardar de nuevo en el CSV
-        df.to_csv('emotional_journal.csv', index=False)
-        
-        st.success("Emociones guardadas exitosamente!")
+            # Guardar en CSV
+            emotion_df = pd.DataFrame([emotion_data])
+            emotion_df.to_csv('emotional_journal.csv', mode='a', header=not pd.io.common.file_exists('emotional_journal.csv'), index=False)
 
-    # Mostrar los registros guardados
-    st.subheader("Registros de Emociones")
-    if os.path.isfile('emotional_journal.csv'):
-        df_records = pd.read_csv('emotional_journal.csv')
-        st.dataframe(df_records)
+            st.success("Emoción registrada correctamente!")
 
-    # Sección para mostrar gráficos de emociones
-    st.subheader("Gráficos de Emociones")
-    
-    # Verificar si hay registros
-    if not df_records.empty:
-        emotional_df = df_records.copy()
+    # Gráfico de emociones
+    emotional_df = pd.read_csv('emotional_journal.csv') if pd.io.common.file_exists('emotional_journal.csv') else pd.DataFrame()
+
+    if not emotional_df.empty:
         emotional_df['FOMO'] = emotional_df['FOMO'].map({True: 'Sí', False: 'No'})
         emotional_df['Impatience'] = emotional_df['Impatience'].map({True: 'Sí', False: 'No'})
         emotional_df['Trading Revenge'] = emotional_df['Trading Revenge'].map({True: 'Sí', False: 'No'})
 
         # Gráfico de emociones
-        fig_emotions = px.box(emotional_df, x="Emotion After", 
+        fig_emotions = px.box(emotional_df, x="Emotion After",
                                title="Impacto Emocional por Resultado de la Operación",
                                labels={"Emotion After": "Estado Emocional"},
                                color="FOMO")
