@@ -35,9 +35,9 @@ if tab == "Registro de Operaciones":
         personal_notes = st.text_area("Notas personales")
 
         # Añadir el botón de envío
-        submitted = st.form_submit_button("Registrar Operación")
+        submit_button = st.form_submit_button("Registrar Operación")
 
-        if submitted:
+        if submit_button:
             # Calcular el resultado
             result_money = (exit_price - entry_price) * position_size - commission
             result_pips = (exit_price - entry_price) * 10000  # Asumiendo que es un par de divisas
@@ -129,9 +129,9 @@ elif tab == "Análisis de Psicología y Emociones":
         emotional_notes = st.text_area("Notas sobre tus emociones")
 
         # Añadir el botón de envío
-        submitted_emotion = st.form_submit_button("Registrar Emoción")
+        submit_emotion = st.form_submit_button("Registrar Emoción")
 
-        if submitted_emotion:
+        if submit_emotion:
             # Guardar las emociones en un DataFrame
             emotion_data = {
                 "Fecha": emotion_date,
