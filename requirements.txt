@@ -1,3 +1,7 @@
-Plotly
-Pandas
+plotly
+pandas 
 Matplotlib
+components
+bootstrap
+dash
+dash-bootstrap-components
