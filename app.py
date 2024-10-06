@@ -42,8 +42,15 @@ if tab == "Registro de Operaciones":
     st.sidebar.header("Agregar Registro de Operación")
 
     pair = st.sidebar.text_input("Par de divisas (o activo)")
-    open_datetime = st.sidebar.datetime_input("Fecha y Hora de Apertura", value=datetime.now())
-    close_datetime = st.sidebar.datetime_input("Fecha y Hora de Cierre", value=datetime.now())
+    open_datetime = st.sidebar.date_input("Fecha de Apertura", value=datetime.now().date())
+    open_time = st.sidebar.time_input("Hora de Apertura", value=datetime.now().time())
+    close_datetime = st.sidebar.date_input("Fecha de Cierre", value=datetime.now().date())
+    close_time = st.sidebar.time_input("Hora de Cierre", value=datetime.now().time())
+
+    # Combina la fecha y hora en un solo datetime
+    open_datetime_combined = datetime.combine(open_datetime, open_time)
+    close_datetime_combined = datetime.combine(close_datetime, close_time)
+
     order_type = st.sidebar.selectbox("Tipo de Orden", 
                                        options=["Market", "Limit", "Stop"])
     entry_price = st.sidebar.number_input("Precio de Entrada", min_value=0.0)
@@ -69,8 +76,8 @@ if tab == "Registro de Operaciones":
             # Agregar una nueva fila al DataFrame
             new_trade_row = pd.DataFrame([{
                 "Pair": pair,
-                "Open Date": open_datetime,
-                "Close Date": close_datetime,
+                "Open Date": open_datetime_combined,
+                "Close Date": close_datetime_combined,
                 "Order Type": order_type,
                 "Entry Price": entry_price,
                 "Exit Price": exit_price,
