@@ -6,3 +6,4 @@ SQLite
 Streamlit
 matplotlib
 datetime
+sqlite3
