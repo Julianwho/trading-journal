@@ -22,7 +22,10 @@ if tab == "Registro de Operaciones":
     st.header("Registro de Operaciones")
 
     # Entrada de datos de la operación
-    open_datetime = st.sidebar.datetime_input("Fecha y Hora de Apertura", value=dt.datetime.now())
+    open_date = st.sidebar.date_input("Fecha de Apertura", value=dt.datetime.now().date())
+    open_time = st.sidebar.time_input("Hora de Apertura", value=dt.datetime.now().time())
+    open_datetime = dt.datetime.combine(open_date, open_time)
+    
     entry_price = st.sidebar.number_input("Precio de Entrada", format="%.2f")
     exit_price = st.sidebar.number_input("Precio de Salida", format="%.2f")
     final_result = st.sidebar.number_input("Resultado Final de la Operación", format="%.2f", step=0.01)
@@ -98,4 +101,3 @@ elif tab == "Análisis de Psicología y Emociones":
     st.header("Análisis de Psicología y Emociones")
     # Aquí puedes implementar el análisis de emociones y un diario emocional
     st.write("Aquí podrás analizar tus emociones y registrar tus estados anímicos.")
-
