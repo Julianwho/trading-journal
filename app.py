@@ -13,14 +13,15 @@ if 'operations' not in st.session_state:
     ])
 
 def add_operation(entry_price, exit_price, stop_loss, take_profit, result):
-    new_row = pd.Series({
-        'Precio de Entrada': entry_price,
-        'Precio de Salida': exit_price,
-        'Dónde estaba tu Stop Loss': stop_loss,
-        'Dónde estaba tu Take Profit': take_profit,
-        'Resultado de la operación': result
+    new_row = pd.DataFrame({
+        'Precio de Entrada': [entry_price],
+        'Precio de Salida': [exit_price],
+        'Dónde estaba tu Stop Loss': [stop_loss],
+        'Dónde estaba tu Take Profit': [take_profit],
+        'Resultado de la operación': [result]
     })
-    st.session_state['operations'] = st.session_state['operations'].append(new_row, ignore_index=True)
+    # Usar pd.concat en lugar de append
+    st.session_state['operations'] = pd.concat([st.session_state['operations'], new_row], ignore_index=True)
 
 def display_operations():
     # Aplicar el color basado en el resultado
