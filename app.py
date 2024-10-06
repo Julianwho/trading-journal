@@ -120,6 +120,17 @@ elif tab == "Estadísticas y Rendimiento":
 elif tab == "Análisis de Psicología y Emociones":
     st.subheader("Análisis de Psicología y Emociones")
 
+    # Sección para seleccionar la operación
+    st.subheader("Selecciona una Operación para Analizar")
+    trade_df = pd.read_csv('trade_journal.csv')
+
+    if not trade_df.empty:
+        selected_trade = st.selectbox("Selecciona la operación", trade_df.index, 
+                                       format_func=lambda x: f"{trade_df['Par de divisas'][x]} - {trade_df['Resultado en Dinero'][x]:.2f} €")
+        selected_trade_details = trade_df.iloc[selected_trade]
+        st.write("Detalles de la Operación Seleccionada:")
+        st.json(selected_trade_details.to_dict())
+
     # Sección para registrar emociones
     st.subheader("Diario Emocional")
 
@@ -127,9 +138,15 @@ elif tab == "Análisis de Psicología y Emociones":
     date = st.date_input("Fecha de la operación", datetime.date.today())
     
     # Formulario para registrar emociones
-    emotion_before = st.selectbox("¿Cómo te sentías antes de la operación?", options=["Estrés", "Ansiedad", "Confianza", "Indecisión", "Tranquilo"])
-    emotion_during = st.selectbox("¿Cómo te sentías durante la operación?", options=["Estrés", "Ansiedad", "Confianza", "Indecisión", "Tranquilo"])
-    emotion_after = st.selectbox("¿Cómo te sentías después de la operación?", options=["Estrés", "Ansiedad", "Confianza", "Indecisión", "Tranquilo"])
+    emotion_before = st.selectbox("¿Cómo te sentías antes de la operación?", 
+                                   options=["Estrés", "Ansiedad", "Confianza", "Indecisión", "Tranquilo", 
+                                            "FOMO", "Impaciencia", "Trading Revenge"])
+    emotion_during = st.selectbox("¿Cómo te sentías durante la operación?", 
+                                   options=["Estrés", "Ansiedad", "Confianza", "Indecisión", "Tranquilo", 
+                                            "FOMO", "Impaciencia", "Trading Revenge"])
+    emotion_after = st.selectbox("¿Cómo te sentías después de la operación?", 
+                                  options=["Estrés", "Ansiedad", "Confianza", "Indecisión", "Tranquilo", 
+                                           "FOMO", "Impaciencia", "Trading Revenge"])
 
     # Registrar creencias limitantes
     limiting_beliefs = st.text_area("Identifica y analiza tus creencias limitantes")
@@ -150,36 +167,29 @@ elif tab == "Análisis de Psicología y Emociones":
         # Agregar la nueva entrada
         df = df.append(emotion_entry, ignore_index=True)
         # Guardar de nuevo en el CSV
-        df.to_csv('emotional_journal.csv', index=False)
-        
+         df.to_csv('emotional_journal.csv', index=False)
+
         st.success("Emociones guardadas exitosamente!")
 
-    # Mostrar los registros guardados
-    st.subheader("Registros de Emociones")
-    if os.path.isfile('emotional_journal.csv'):
-        df_records = pd.read_csv('emotional_journal.csv')
-        st.dataframe(df_records)
+    # Gráfico de emociones
+    if not trade_df.empty:
+        emotional_df = pd.read_csv('emotional_journal.csv')
+        
+        if not emotional_df.empty:
+            emotional_df['Resultado'] = emotional_df['Fecha'].map(dict(zip(trade_df['Fecha de Cierre'], trade_df['Resultado en Dinero'])))
+            emotional_df["Emoción Antes"] = emotional_df["Emotion Before"].apply(lambda x: ["Estrés", "Ansiedad", "Confianza", "Indecisión", "Tranquilo", "FOMO", "Impaciencia", "Trading Revenge"].index(x) + 1)
+            emotional_df["Emoción Durante"] = emotional_df["Emotion During"].apply(lambda x: ["Estrés", "Ansiedad", "Confianza", "Indecisión", "Tranquilo", "FOMO", "Impaciencia", "Trading Revenge"].index(x) + 1)
+            emotional_df["Emoción Después"] = emotional_df["Emotion After"].apply(lambda x: ["Estrés", "Ansiedad", "Confianza", "Indecisión", "Tranquilo", "FOMO", "Impaciencia", "Trading Revenge"].index(x) + 1)
 
-    # Sección para mostrar gráficos de emociones
-    st.subheader("Gráficos de Emociones")
-    
-    # Verificar si hay registros
-    if not df_records.empty:
-        emotional_df = df_records.copy()
-        emotional_df['Resultado'] = ['Ganadora' if i % 2 == 0 else 'Perdedora' for i in range(len(emotional_df))]  # Simulando resultados
-        emotional_df["Emoción Antes"] = emotional_df["Emotion Before"].apply(lambda x: ["Estrés", "Ansiedad", "Confianza", "Indecisión", "Tranquilo"].index(x) + 1)
-        emotional_df["Emoción Durante"] = emotional_df["Emotion During"].apply(lambda x: ["Estrés", "Ansiedad", "Confianza", "Indecisión", "Tranquilo"].index(x) + 1)
-        emotional_df["Emoción Después"] = emotional_df["Emotion After"].apply(lambda x: ["Estrés", "Ansiedad", "Confianza", "Indecisión", "Tranquilo"].index(x) + 1)
+            # Gráfico de emociones
+            fig_emotions = px.box(emotional_df, x="Resultado", y=["Emoción Antes", "Emoción Durante", "Emoción Después"],
+                                   labels={"value": "Nivel de Emoción", "variable": "Estado Emocional"},
+                                   title="Impacto Emocional por Resultado de la Operación",
+                                   color="Resultado")
 
-        # Gráfico de emociones
-        fig_emotions = px.box(emotional_df, x="Resultado", y=["Emoción Antes", "Emoción Durante", "Emoción Después"],
-                               labels={"value": "Nivel de Emoción", "variable": "Estado Emocional"},
-                               title="Impacto Emocional por Resultado de la Operación",
-                               color="Resultado")
+            fig_emotions.update_layout(template='plotly_white', hovermode='x unified')
 
-        fig_emotions.update_layout(template='plotly_white', hovermode='x unified')
-
-        st.plotly_chart(fig_emotions)
+            st.plotly_chart(fig_emotions)
 
     # Análisis de creencias limitantes
     st.subheader("Análisis de Creencias Limitantes")
