@@ -74,4 +74,9 @@ if section == "Complete Trade Log":
 elif section == "Statistics and Performance":
     st.header("Statistics and Performance")
     display_statistics_and_performance(trade_input)
-``
+
+# Psychology and Emotions Analysis
+elif section == "Psychology and Emotions Analysis":
+    st.header("Psychology and Emotions Analysis")
+    # TO DO: implement psychology and emotions analysis
+    pass
