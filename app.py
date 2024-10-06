@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import os
 import plotly.express as px
+import plotly.graph_objects as go
 
 # Archivo CSV para almacenar los datos
 CSV_FILE = "trading_journal.csv"
@@ -108,7 +109,19 @@ if tab == "Registro de Operaciones":
 
     # Mostrar gráfico interactivo de retornos
     st.subheader("Gráfico de Retornos")
-    st.line_chart(df["Result ($)"])
+    if not df.empty:
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=df['Date Close'], y=df["Result ($)"].cumsum(), mode='lines+markers', name='P&L Acumulado', line=dict(color='royalblue', width=2)))
+
+        fig.update_layout(title='P&L Acumulado',
+                          xaxis_title='Fecha',
+                          yaxis_title='P&L Acumulado ($)',
+                          template='plotly_white',
+                          hovermode='x unified',
+                          showlegend=True,
+                          xaxis_tickangle=-45)
+
+        st.plotly_chart(fig)
 
 elif tab == "Estadísticas y Rendimiento":
     # Título de la sección
@@ -142,7 +155,15 @@ elif tab == "Estadísticas y Rendimiento":
 
     # Gráficos de estadísticas
     st.subheader("Ganancias y Pérdidas Acumuladas")
-    fig = px.line(df, x='Date Close', y='Cumulative P&L', title='P&L Acumulado')
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=df['Date Close'], y=df['Cumulative P&L'], mode='lines', name='P&L Acumulado', line=dict(color='green', width=3)))
+
+    fig.update_layout(title='P&L Acumulado',
+                      xaxis_title='Fecha',
+                      yaxis_title='P&L Acumulado ($)',
+                      template='plotly_white',
+                      hovermode='x unified')
+
     st.plotly_chart(fig)
 
     st.subheader("Estadísticas Generales")
@@ -154,10 +175,10 @@ elif tab == "Estadísticas y Rendimiento":
     st.metric("Máxima Racha de Pérdidas", max_loss_streak)
 
     # Comparación por tipo de operación
-    # Suponiendo que tengas una columna "Tipo de Operación" en tu DataFrame
     if 'Order Type' in df.columns:
         order_type_stats = df.groupby('Order Type')['Result ($)'].sum().reset_index()
-        fig2 = px.bar(order_type_stats, x='Order Type', y='Result ($)', title='Ganancias/Pérdidas por Tipo de Operación')
-        st.plotly_chart(fig2)
+        fig2 = px.bar(order_type_stats, x='Order Type', y='Result ($)', title='Ganancias/Pérdidas por Tipo de Operación', color='Result ($)', color_continuous_scale='blues')
 
-    # Análisis adicional aquí...
+        fig2.update_layout(template='plotly_white', xaxis_title='Tipo de Operación', yaxis_title='Ganancias/Pérdidas ($)', hovermode='x unified')
+        
+        st.plotly_chart(fig2)
