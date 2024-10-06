@@ -167,7 +167,7 @@ elif tab == "Análisis de Psicología y Emociones":
         # Agregar la nueva entrada
         df = df.append(emotion_entry, ignore_index=True)
         # Guardar de nuevo en el CSV
-         df.to_csv('emotional_journal.csv', index=False)
+        df.to_csv('emotional_journal.csv', index=False)
 
         st.success("Emociones guardadas exitosamente!")
 
