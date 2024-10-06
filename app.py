@@ -37,37 +37,38 @@ if tab == "Registro de Operaciones":
         # Añadir el botón de envío
         submit_button = st.form_submit_button("Registrar Operación")
 
-        if submit_button:
-            # Calcular el resultado
-            result_money = (exit_price - entry_price) * position_size - commission
-            result_pips = (exit_price - entry_price) * 10000  # Asumiendo que es un par de divisas
+    # Procesar el registro después del envío
+    if submit_button:
+        # Calcular el resultado
+        result_money = (exit_price - entry_price) * position_size - commission
+        result_pips = (exit_price - entry_price) * 10000  # Asumiendo que es un par de divisas
 
-            # Crear un DataFrame para guardar la operación
-            trade_data = {
-                "Par de divisas": currency_pair,
-                "Fecha Apertura": open_time,
-                "Fecha Cierre": close_time,
-                "Tipo de Orden": order_type,
-                "Precio de Entrada": entry_price,
-                "Precio de Salida": exit_price,
-                "Stop-Loss": stop_loss,
-                "Take-Profit": take_profit,
-                "Tamaño de la Posición": position_size,
-                "Resultado en Dinero": result_money,
-                "Resultado en Pips": result_pips,
-                "Spread": spread,
-                "Slippage": slippage,
-                "Comisiones": commission,
-                "Motivo": trade_reason,
-                "Notas": personal_notes,
-            }
+        # Crear un DataFrame para guardar la operación
+        trade_data = {
+            "Par de divisas": currency_pair,
+            "Fecha Apertura": open_time,
+            "Fecha Cierre": close_time,
+            "Tipo de Orden": order_type,
+            "Precio de Entrada": entry_price,
+            "Precio de Salida": exit_price,
+            "Stop-Loss": stop_loss,
+            "Take-Profit": take_profit,
+            "Tamaño de la Posición": position_size,
+            "Resultado en Dinero": result_money,
+            "Resultado en Pips": result_pips,
+            "Spread": spread,
+            "Slippage": slippage,
+            "Comisiones": commission,
+            "Motivo": trade_reason,
+            "Notas": personal_notes,
+        }
 
-            # Guardar en CSV
-            if not pd.DataFrame(trade_data).empty:
-                df = pd.DataFrame([trade_data])
-                df.to_csv(file_path, mode='a', header=not pd.io.common.file_exists(file_path), index=False)
+        # Guardar en CSV
+        if not pd.DataFrame(trade_data).empty:
+            df = pd.DataFrame([trade_data])
+            df.to_csv(file_path, mode='a', header=not pd.io.common.file_exists(file_path), index=False)
 
-            st.success("Operación registrada correctamente!")
+        st.success("Operación registrada correctamente!")
 
 # Pestaña de Estadísticas y Rendimiento
 elif tab == "Estadísticas y Rendimiento":
@@ -131,24 +132,25 @@ elif tab == "Análisis de Psicología y Emociones":
         # Añadir el botón de envío
         submit_emotion = st.form_submit_button("Registrar Emoción")
 
-        if submit_emotion:
-            # Guardar las emociones en un DataFrame
-            emotion_data = {
-                "Fecha": emotion_date,
-                "Emotion Before": emotion_before,
-                "Emotion During": emotion_during,
-                "Emotion After": emotion_after,
-                "FOMO": fomo,
-                "Impatience": impatience,
-                "Trading Revenge": trading_revenge,
-                "Emotional Notes": emotional_notes,
-            }
+    # Procesar el registro de emociones después del envío
+    if submit_emotion:
+        # Guardar las emociones en un DataFrame
+        emotion_data = {
+            "Fecha": emotion_date,
+            "Emotion Before": emotion_before,
+            "Emotion During": emotion_during,
+            "Emotion After": emotion_after,
+            "FOMO": fomo,
+            "Impatience": impatience,
+            "Trading Revenge": trading_revenge,
+            "Emotional Notes": emotional_notes,
+        }
 
-            # Guardar en CSV
-            emotion_df = pd.DataFrame([emotion_data])
-            emotion_df.to_csv('emotional_journal.csv', mode='a', header=not pd.io.common.file_exists('emotional_journal.csv'), index=False)
+        # Guardar en CSV
+        emotion_df = pd.DataFrame([emotion_data])
+        emotion_df.to_csv('emotional_journal.csv', mode='a', header=not pd.io.common.file_exists('emotional_journal.csv'), index=False)
 
-            st.success("Emoción registrada correctamente!")
+        st.success("Emoción registrada correctamente!")
 
     # Gráfico de emociones
     emotional_df = pd.read_csv('emotional_journal.csv') if pd.io.common.file_exists('emotional_journal.csv') else pd.DataFrame()
@@ -159,14 +161,12 @@ elif tab == "Análisis de Psicología y Emociones":
         emotional_df['Trading Revenge'] = emotional_df['Trading Revenge'].map({True: 'Sí', False: 'No'})
 
         # Gráfico de emociones
-        fig_emotions = px.box(emotional_df, x="Emotion After",
-                               title="Impacto Emocional por Resultado de la Operación",
-                               labels={"Emotion After": "Estado Emocional"},
-                               color="FOMO")
-
-        fig_emotions.update_layout(template='plotly_white', hovermode='x unified')
+        fig_emotions = px.histogram(emotional_df, x='Emotion After', color='FOMO',
+                                     title='Impacto de las Emociones en el Rendimiento',
+                                     labels={'Emotion After': 'Emoción Después', 'FOMO': 'FOMO'},
+                                     template='plotly_white')
         st.plotly_chart(fig_emotions)
 
-    # Análisis de creencias limitantes
-    st.subheader("Análisis de Creencias Limitantes")
-    st.write("Aquí puedes reflexionar sobre cómo estas creencias afectan tus decisiones de trading.")
+    else:
+        st.warning("No hay registros emocionales. Registra al menos una emoción para ver gráficos.")
+
