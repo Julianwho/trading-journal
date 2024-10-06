@@ -1,103 +1,153 @@
 import streamlit as st
 import pandas as pd
-import datetime as dt
+import datetime
 import base64
-import matplotlib.pyplot as plt
-import seaborn as sns
+import os
 
-# Inicializa el DataFrame para almacenar las operaciones
-if 'trade_df' not in st.session_state:
-    st.session_state.trade_df = pd.DataFrame(columns=["Fecha y Hora de Apertura", "Precio de Entrada", "Precio de Salida", "Resultado Final", "FOMO", "Trading Revenge", "Impaciencia", "Imagen"])
+# Funciones para cargar imágenes
+def load_image(image_file):
+    img = open(image_file, "rb").read()
+    return f'<img src="data:image/png;base64,{base64.b64encode(img).decode()}" style="width: 100%;"/>'
 
-# Configura la interfaz de Streamlit
-st.title("Diario de Trading")
-tab = st.sidebar.radio("Selecciona una pestaña", ["Registro de Operaciones", "Análisis de Psicología y Emociones", "Estadísticas y Rendimiento"])
+# Configuración inicial
+st.set_page_config(page_title="Trading Journal", layout="wide")
 
-# Pestaña: Registro de Operaciones
-if tab == "Registro de Operaciones":
-    st.header("Registro de Operaciones")
-    
-    open_datetime = st.sidebar.date_input("Fecha de Apertura", value=dt.datetime.now().date())
-    open_time = st.sidebar.time_input("Hora de Apertura", value=dt.datetime.now().time())
-    entry_price = st.sidebar.number_input("Precio de Entrada", format="%.2f")
-    exit_price = st.sidebar.number_input("Precio de Salida", format="%.2f")
-    final_result = st.sidebar.number_input("Resultado Final de la Operación", format="%.2f")
-    
-    # Captura las emociones
-    fomo = st.sidebar.checkbox("¿Sentiste FOMO?", value=False)
-    revenge = st.sidebar.checkbox("¿Hiciste Trading Revenge?", value=False)
-    impatience = st.sidebar.checkbox("¿Sentiste Impaciencia?", value=False)
+# Cargar datos desde un archivo CSV
+def load_data():
+    if os.path.exists("trading_data.csv"):
+        return pd.read_csv("trading_data.csv")
+    else:
+        return pd.DataFrame(columns=[
+            "Currency Pair", "Open Date", "Close Date", "Order Type", "Entry Price", 
+            "Exit Price", "Stop Loss", "Take Profit", "Position Size", "Pips", 
+            "Result", "Spread", "Slippage", "Commission", "Reason", "Notes", 
+            "Image", "FOMO", "Impatience", "Revenge Trading"
+        ])
 
-    # Subir imagen
-    uploaded_file = st.sidebar.file_uploader("Sube una imagen", type=["jpg", "jpeg", "png"])
-    
-    if st.sidebar.button("Registrar Operación"):
-        if uploaded_file is not None:
-            # Lee la imagen
-            img_bytes = uploaded_file.read()
-            img_base64 = base64.b64encode(img_bytes).decode()
-            img_url = f"data:image/jpeg;base64,{img_base64}"
-        else:
-            img_url = ""
+# Guardar datos en un archivo CSV
+def save_data(df):
+    df.to_csv("trading_data.csv", index=False)
 
-        # Agrega la operación al DataFrame
-        new_entry = {
-            "Fecha y Hora de Apertura": dt.datetime.combine(open_datetime, open_time),
-            "Precio de Entrada": entry_price,
-            "Precio de Salida": exit_price,
-            "Resultado Final": final_result,
-            "FOMO": fomo,
-            "Trading Revenge": revenge,
-            "Impaciencia": impatience,
-            "Imagen": img_url
-        }
-        st.session_state.trade_df = st.session_state.trade_df.append(new_entry, ignore_index=True)
+# Función principal de la aplicación
+def main():
+    st.title("Trading Journal")
 
-    # Muestra el registro de operaciones en formato de tabla
-    if not st.session_state.trade_df.empty:
-        # Colorear filas según el resultado final
-        def color_negative_red(val):
-            if val < 0:
-                return 'background-color: lightcoral'
-            elif val > 0:
-                return 'background-color: lightgreen'
+    # Cargar o inicializar los datos
+    df = load_data()
+
+    # Pestañas
+    tabs = st.tabs(["Registro de Operaciones", "Estadísticas y Rendimiento", "Análisis de Psicología y Emociones"])
+
+    # Pestaña de Registro de Operaciones
+    with tabs[0]:
+        st.header("Registro de Operaciones")
+
+        # Entradas de datos
+        currency_pair = st.text_input("Par de divisas (o activo)")
+        open_date = st.sidebar.date_input("Fecha de Apertura", value=datetime.datetime.now().date())
+        close_date = st.sidebar.date_input("Fecha de Cierre", value=datetime.datetime.now().date())
+        order_type = st.selectbox("Tipo de Orden", ["Market", "Limit", "Stop"])
+        entry_price = st.number_input("Precio de Entrada", format="%.2f")
+        exit_price = st.number_input("Precio de Salida", format="%.2f")
+        stop_loss = st.number_input("Stop-Loss", format="%.2f")
+        take_profit = st.number_input("Take-Profit", format="%.2f")
+        position_size = st.number_input("Tamaño de la Posición (lotes)", format="%.2f")
+        spread = st.number_input("Spread", format="%.2f")
+        slippage = st.number_input("Slippage", format="%.2f")
+        commission = st.number_input("Comisiones", format="%.2f")
+        reason = st.selectbox("Motivo de la Operación", ["Fundamental", "Técnico"])
+        notes = st.text_area("Notas Personales")
+        fomo = st.checkbox("FOMO")
+        impatience = st.checkbox("Impatiencia")
+        revenge_trading = st.checkbox("Trading Revenge")
+
+        # Subida de imagen
+        image_file = st.file_uploader("Sube una imagen", type=["jpg", "jpeg", "png"])
+
+        if st.button("Registrar Operación"):
+            if currency_pair:
+                pips = (exit_price - entry_price) * 10000  # Suponiendo pips para divisas
+                result = exit_price - entry_price - commission - (spread + slippage)
+                new_row = {
+                    "Currency Pair": currency_pair,
+                    "Open Date": open_date,
+                    "Close Date": close_date,
+                    "Order Type": order_type,
+                    "Entry Price": entry_price,
+                    "Exit Price": exit_price,
+                    "Stop Loss": stop_loss,
+                    "Take Profit": take_profit,
+                    "Position Size": position_size,
+                    "Pips": pips,
+                    "Result": result,
+                    "Spread": spread,
+                    "Slippage": slippage,
+                    "Commission": commission,
+                    "Reason": reason,
+                    "Notes": notes,
+                    "Image": image_file.name if image_file else "",
+                    "FOMO": fomo,
+                    "Impatience": impatience,
+                    "Revenge Trading": revenge_trading
+                }
+                df = df.append(new_row, ignore_index=True)
+                save_data(df)
+                st.success("Operación registrada exitosamente.")
             else:
-                return ''
+                st.error("Por favor, ingresa todos los campos requeridos.")
 
-        styled_df = st.session_state.trade_df.style.applymap(color_negative_red, subset=['Resultado Final'])
-        st.dataframe(styled_df)
+        # Mostrar el registro de operaciones en formato de tabla
+        st.write("### Registro de Operaciones")
+        if not df.empty:
+            df["Resultado Final"] = df["Result"].apply(lambda x: "Positiva" if x >= 0 else "Negativa")
+            color_map = df["Resultado Final"].map({"Positiva": "background-color: lightgreen", "Negativa": "background-color: lightcoral"})
+            styled_df = df.style.apply(lambda x: color_map, axis=1)
+            st.dataframe(styled_df)
 
-# Pestaña: Análisis de Psicología y Emociones
-elif tab == "Análisis de Psicología y Emociones":
-    st.header("Análisis de Psicología y Emociones")
+            for _, row in df.iterrows():
+                st.write(f"**Par de Divisas:** {row['Currency Pair']}")
+                st.write(f"**Fecha de Apertura:** {row['Open Date']}, **Fecha de Cierre:** {row['Close Date']}")
+                st.write(f"**Resultado Final:** {row['Result']}")
+                if row['Image']:
+                    st.markdown(load_image(row['Image']) if row['Image'] else "")
+                st.write(f"**Motivo de la Operación:** {row['Reason']}")
+                st.write(f"**FOMO:** {'Sí' if row['FOMO'] else 'No'}, **Impatiencia:** {'Sí' if row['Impatience'] else 'No'}, **Trading Revenge:** {'Sí' if row['Revenge Trading'] else 'No'}")
+                st.write("---")
 
-    # Mostrar todas las emociones registradas
-    if not st.session_state.trade_df.empty:
-        st.subheader("Registro de Emociones")
-        emotions_df = st.session_state.trade_df[["Fecha y Hora de Apertura", "FOMO", "Trading Revenge", "Impaciencia"]]
-        st.dataframe(emotions_df)
+    # Pestaña de Estadísticas y Rendimiento
+    with tabs[1]:
+        st.header("Estadísticas y Rendimiento")
+        if not df.empty:
+            # Calcular estadísticas
+            total_trades = df.shape[0]
+            wins = df[df["Result"] >= 0].shape[0]
+            losses = total_trades - wins
+            win_rate = (wins / total_trades) * 100 if total_trades > 0 else 0
 
-# Pestaña: Estadísticas y Rendimiento
-elif tab == "Estadísticas y Rendimiento":
-    st.header("Estadísticas y Rendimiento")
+            st.write(f"**Total de Operaciones:** {total_trades}")
+            st.write(f"**Operaciones Ganadoras:** {wins}")
+            st.write(f"**Operaciones Perdedoras:** {losses}")
+            st.write(f"**Ratio de Aciertos:** {win_rate:.2f}%")
 
-    if not st.session_state.trade_df.empty:
-        st.subheader("Gráficos de Rendimiento")
-        
-        # Calcula P&L total
-        st.session_state.trade_df["P&L en Dinero"] = st.session_state.trade_df["Resultado Final"]
-        st.session_state.trade_df["Fecha y Hora de Apertura"] = pd.to_datetime(st.session_state.trade_df["Fecha y Hora de Apertura"])
+            # Gráfico de Ganancias y Pérdidas
+            st.subheader("Gráfico de Ganancias y Pérdidas")
+            df['Cumulative P&L'] = df['Result'].cumsum()
+            st.line_chart(df['Cumulative P&L'])
 
-        # Gráfico de línea de P&L
-        plt.figure(figsize=(10, 5))
-        sns.lineplot(data=st.session_state.trade_df, x="Fecha y Hora de Apertura", y="P&L en Dinero", marker='o')
-        plt.title("Evolución de P&L")
-        plt.xlabel("Fecha y Hora de Apertura")
-        plt.ylabel("P&L en Dinero")
-        st.pyplot(plt)
+            # Gráfico de Operaciones por Tipo
+            st.subheader("Operaciones por Tipo")
+            st.bar_chart(df['Order Type'].value_counts())
 
-        # Mostrar estadísticas generales
-        total_trades = len(st.session_state.trade_df)
-        total_profit = st.session_state.trade_df["Resultado Final"].sum()
-        st.write(f"Número total de operaciones: {total_trades}")
-        st.write(f"Ganancia total: {total_profit:.2f}")
+    # Pestaña de Análisis de Psicología y Emociones
+    with tabs[2]:
+        st.header("Análisis de Psicología y Emociones")
+        if not df.empty:
+            emotions = df[['Open Date', 'FOMO', 'Impatience', 'Revenge Trading']]
+            st.write("### Diario Emocional")
+            for _, row in emotions.iterrows():
+                st.write(f"**Fecha de Apertura:** {row['Open Date']}, **FOMO:** {'Sí' if row['FOMO'] else 'No'}, **Impatiencia:** {'Sí' if row['Impatience'] else 'No'}, **Trading Revenge:** {'Sí' if row['Revenge Trading'] else 'No'}")
+        else:
+            st.write("No hay operaciones registradas para mostrar.")
+
+if __name__ == "__main__":
+    main()
